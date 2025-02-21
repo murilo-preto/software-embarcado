@@ -1,12 +1,4 @@
-Here is the improved version of your code with separate functions and added comments for better clarity and modularity:
 
-```c
-/*
- * lab1_1.c
- *
- *  Created on: 11/07/2013
- *      Author: Amaury
- */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -132,6 +124,3 @@ int main() {
 
     return 0;
 }
-```
-
-This refactored code divides the program into separate functions for initialization, writing, and reading the bitmap file. Each function is also commented to explain its purpose.
