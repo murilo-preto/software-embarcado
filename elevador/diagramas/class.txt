@@ -1,0 +1,36 @@
+classDiagram
+    Elevador : boolean Porta_aberta
+    Elevador : boolean Sobe
+    Elevador : boolean Desce
+    Elevador : boolean Parado
+    Elevador : boolean Transicao
+    Elevador : int posicao
+
+    Elevador <-- Embarque
+    Embarque : Porta_aberta (True)
+    Embarque : Parado(True)
+    Embarque : Sobe (False)
+    Embarque : Desce(False)
+    Embarque : Transicao(False)
+
+    Elevador <-- Transicao
+    Transicao : Porta_aberta (False)
+    Transicao : Parado(True)
+    Transicao : Sobe (False)
+    Transicao : Desce(False)
+    Transicao : Transicao(True)
+
+    Elevador <-- Subindo
+    Subindo : Porta_aberta (False)
+    Subindo : Parado(False)
+    Subindo : Sobe (True)
+    Subindo : Desce(False)
+    Subindo : Transicao(False)
+
+    Elevador <-- Descendo
+    Descendo : Porta_aberta (False)
+    Descendo : Parado(False)
+    Descendo : Sobe (False)
+    Descendo : Desce(True)
+    Descendo : Transicao(False)
+

@@ -1,0 +1,33 @@
+stateDiagram-v2
+    state "Preparando para embarcar" as z
+    state "Preparando para subir" as x
+    state "Preparando para descer" as c
+    state "Inativo" as a
+    state "Embarcando" as e
+    state "Subindo" as s
+    state "Descendo" as d
+    state "Preparando" as p
+
+    z --> x
+    z --> c
+
+    [*] --> z
+    state z {
+        
+        a --> p
+        p --> e
+    }
+
+    state x {
+        Preparando_ --> s
+        s --> Preparando
+        Preparando --> Embarcando
+    }
+    x--> [*]
+
+    state c {
+        Preparando__ --> d
+        d --> Preparando___
+        Preparando___ --> Embarcando_
+    }
+    c--> [*]
