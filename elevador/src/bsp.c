@@ -144,7 +144,7 @@ void *udpServer() {
                         }
                     }
 
-                    // Tratar sinal com prefixo "PortaAbertaA"
+                    // Tratar sinal com prefixo "PortaAberta"
                     if (strncmp(buf, "PortaAberta", 11) == 0) {
                         int id = atoi(&buf[11]);
                         MicroEvt *evt = Q_NEW(MicroEvt, PORTA_ABRIU_SIG);
@@ -155,6 +155,18 @@ void *udpServer() {
                             case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
                         }
                     }
+
+                    // Tratar sinal com prefixo "PortaAberta"
+                    // if (strncmp(buf, "PortaAberta", 11) == 0) {
+                    //     int id = atoi(&buf[11]);
+                    //     MicroEvt *evt = Q_NEW(MicroEvt, PORTA_ABRIU_SIG);
+                    //     evt->elevador_id = id;
+                    //     switch(id) {
+                    //         case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                    //         case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                    //         case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                    //     }
+                    // }
                 }
             }
         }
@@ -394,9 +406,19 @@ void BSP_porta_abriu(int id, int direcao) {
     }
 }
 
-// void BSP_andar(int i) {
-//     if (i == 0)
-//         sendUDP(1);
-//     else
-//         sendUDP(0);
-// }
+void BSP_cabine(int id, int mode) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        if (mode == 1) {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineon%d", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineoff%d", id);
+        }
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
