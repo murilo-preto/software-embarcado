@@ -23,6 +23,6 @@ typedef struct MicroEvtTag {
 } MicroEvt;
 
 extern QActive * const AO_tmicro;
-extern void TMicro_ctor();
+extern void TElevador_actor();
 
 #endif /* SINAIS_H_ */

@@ -34,6 +34,9 @@
 #ifndef BSP_H_
 #define BSP_H_
 
+#include <stdint.h> 
+
+
 #define BSP_TICKS_PER_SEC     100u
 #define BUFLEN                512 
 #define PORTIN                8888
@@ -50,9 +53,8 @@ uint32_t BSP_random(void);          // pseudo-random generator
 
 void bsp_on();
 void bsp_off();
-void BSP_forno(int i);
-void BSP_luz(int i);
-void BSP_digito(int seg, int num);
+void BSP_porta(int i);
+void BSP_andar(int i);
 void sendUDP(int comando);
 
 #endif // BSP_H_
