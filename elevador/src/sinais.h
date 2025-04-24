@@ -20,6 +20,8 @@ typedef struct MicroEvtTag {
 /* public: */
 } MicroEvt;
 
+extern uint8_t current_elevator_id;
+
 extern QActive * const AO_tmicro;
 extern void TElevador_actor();
 

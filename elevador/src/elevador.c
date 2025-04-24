@@ -4,7 +4,6 @@
 
 
 void TElevador_display(int andar);
-
 #define UM_SEG (QTimeEvtCtr)(BSP_TICKS_PER_SEC)
 
 enum InternalSignals {
@@ -14,6 +13,7 @@ enum InternalSignals {
 
 typedef struct TElevadorTag {
     QActive super;       
+    int id;
     int andar_atual;     
     int andar_destino;   
     int status;          
@@ -58,11 +58,11 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
     QState status;
 
     // Log the received signal
-    printf("Signal received in TElevador_parado: %d\n", e->sig);
+    printf("Sinal recebido em TElevador_parado: %d\n", e->sig);
 
     switch (e->sig) {
         case OPEN_SIG: { // Request to open door
-            printf("Opening door...\n");
+            printf("Opening door %d\n", current_elevator_id);
             break;
         }
         case CLOSE_SIG: { // Request to close door

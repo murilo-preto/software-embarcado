@@ -41,6 +41,9 @@ WSADATA wsaData;
 LPHOSTENT lpHostEntry;
 pthread_t tudpServer;
 
+static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
+uint8_t current_elevator_id = 0;
+
 void sendUDP(int sig) {
     int slen = sizeof(si_other);
     int siglen;
@@ -92,8 +95,11 @@ void *udpServer() {
                     printf("Sinal recebido: %s\n", buf); // Adiciona um print para todos os sinais recebidos
                     fflush(stdout);
 
+                    // Tratar sinal com prefixo "porta"
                     if (strncmp(buf, "porta", 5) == 0) {
-                        static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
+                        // Extrair número após o prefixo "porta"
+                        int id = atoi(&buf[5]);
+                        current_elevator_id = (uint8_t)id;
                         QACTIVE_PUBLISH(&openEvt, NULL);
                     }
 
