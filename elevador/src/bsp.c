@@ -45,11 +45,7 @@ static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
 static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
 static QEvt const desce_botao_Evt = QEVT_INITIALIZER(DESCE_BOTAO_SIG);
 static QEvt const porta_abriu_Evt = QEVT_INITIALIZER(PORTA_ABRIU_SIG);
-
 uint8_t id_elevador = 0;
-uint8_t pos_elevador1 = 0;
-uint8_t pos_elevador2 = 0;
-uint8_t pos_elevador3 = 0;
 
 void sendUDP(int sig) {
     int slen = sizeof(si_other);
@@ -107,6 +103,7 @@ void *udpServer() {
 
                     // Tratar sinal com prefixo "porta"
                     if (strncmp(buf, "porta", 5) == 0) {
+                        // Extrair número após o prefixo "porta"
                         int id = atoi(&buf[5]);
                         id_elevador = (uint8_t)id;
                         QACTIVE_PUBLISH(&openEvt, NULL);
