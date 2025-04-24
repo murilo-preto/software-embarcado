@@ -45,6 +45,9 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
     QActive_subscribe((QActive *)me, OPEN_SIG);   // Open door
     QActive_subscribe((QActive *)me, CLOSE_SIG);  // Close door
     QActive_subscribe((QActive *)me, SOBE_BOTAO_SIG); 
+    QActive_subscribe((QActive *)me, DESCE_BOTAO_SIG); 
+    QActive_subscribe((QActive *)me, PORTA_ABRIU_SIG); 
+
 
     // Arm the time event for periodic signals
     QTimeEvt_armX(&me->timeEvt, UM_SEG, 0);
@@ -56,30 +59,47 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
 /*..........................................................................*/
 /* State: Elevator is stopped */
 QState TElevador_parado(TElevador * const me, QEvt const * const e) {
-    QState status;
+    QState status = Q_HANDLED(); // Default to handled state
 
     // Log the received signal
-    printf("Sinal recebido em TElevador_parado: %d\n", e->sig);
+    // printf("RECEBIDO: <TElevador_parado>: %d\n", e->sig);
 
     switch (e->sig) {
         case OPEN_SIG: { // Request to open door
             printf("Abrindo porta %d\n", id_elevador);
-            BSP_porta(id_elevador);
+            BSP_porta(id_elevador, 0);
             id_elevador = 0;
             break;
         }
         case SOBE_BOTAO_SIG: { // Request to close door
-            printf("Acionando botão sobe %d\n", id_elevador);
+            printf("Acionando botao sobe %d\n", id_elevador);
             BSP_botao_sobe(id_elevador);
+            BSP_porta(id_elevador, 1);
             id_elevador = 0;
+            status = Q_HANDLED();
+            break;  
+        }
+        case DESCE_BOTAO_SIG: { // Request to close door
+            printf("Acionando botao desce %d\n", id_elevador);
+            BSP_botao_desce(id_elevador);
+            BSP_porta(id_elevador, (-1));
+            id_elevador = 0;
+            status = Q_HANDLED();
             break;  
         }
         case CLOSE_SIG: { // Request to close door
             status = Q_HANDLED();
             break;
         }
+        case PORTA_ABRIU_SIG: {
+            printf("Porta do elevador %d terminou de abrir\n", id_elevador);
+            BSP_porta_abriu(id_elevador, 1);
+            id_elevador = 0;
+            status = Q_TRAN(&TElevador_porta_aberta);
+            break;
+        }
         default: {
-            status = Q_SUPER(&QHsm_top); // Pass unhandled signals to the top state
+            status = Q_HANDLED();
             break;
         }
     }
@@ -92,7 +112,7 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
     QState status;
 
     // Log the received signal
-    printf("Signal received in TElevador_movimento: %d\n", e->sig);
+    // printf("RECEBIDO: <TElevador_movimento>: %d\n", e->sig);
 
     switch (e->sig) {
         case OPEN_SIG: { // Request to open door (ignored while moving)
@@ -116,17 +136,15 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
 static QState TElevador_porta_aberta(TElevador * const me, QEvt const * const e) {
     QState status;
 
-    // Log the received signal
-    printf("Signal received in TElevador_porta_aberta: %d\n", e->sig);
-
     switch (e->sig) {
-        case CLOSE_SIG: { // Request to close door
-            BSP_porta(me->porta_aberta); // acionacarroA - close door
-            me->porta_aberta = 0;
-            status = Q_TRAN(&TElevador_parado); // Transition to "parado" state
+        case PORTA_ABRIU_SIG: {
+            // Ignore or log the event to prevent reprocessing
+            printf("PORTA_ABRIU_SIG ignored in TElevador_porta_aberta\n");
+            status = Q_HANDLED();
             break;
         }
         default: {
+            printf("Unhandled signal in TElevador_porta_aberta: %d\n", e->sig);
             status = Q_SUPER(&QHsm_top); // Pass unhandled signals to the top state
             break;
         }

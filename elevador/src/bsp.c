@@ -43,13 +43,19 @@ pthread_t tudpServer;
 
 static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
 static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
+static QEvt const desce_botao_Evt = QEVT_INITIALIZER(DESCE_BOTAO_SIG);
+static QEvt const porta_abriu_Evt = QEVT_INITIALIZER(PORTA_ABRIU_SIG);
+
 uint8_t id_elevador = 0;
+uint8_t pos_elevador1 = 0;
+uint8_t pos_elevador2 = 0;
+uint8_t pos_elevador3 = 0;
 
 void sendUDP(int sig) {
     int slen = sizeof(si_other);
     int siglen;
     if (s != -1) {
-        printf("Sinal enviado %s\n", out_signals[sig]);
+        printf("ENVIADO: %s\n", out_signals[sig]);
         siglen = strlen(out_signals[sig]);
         sendto(s, out_signals[sig], siglen, 0, (struct sockaddr *)&si_other, slen);
     }
@@ -71,7 +77,7 @@ void sendUDPSeg(int seg, int num) {
     if (s != -1) {
         siglen = sizeof(displaySig);
         sendto(s, displaySig, siglen, 0, (struct sockaddr *)&si_other, slen);
-        printf("Sinal enviado %s\n", displaySig);
+        printf("ENVIADO: %s\n", displaySig);
         fflush(stdout);
     }
 }
@@ -96,12 +102,11 @@ void *udpServer() {
             while (1) {
                 if ((recv_len = recvfrom(ss, buf, BUFLEN, 0, (struct sockaddr *)&si_other, &slen)) != -1) {
                     buf[recv_len] = '\0';
-                    printf("Sinal recebido: %s\n", buf); // Adiciona um print para todos os sinais recebidos
+                    printf("RECEBIDO: %s\n", buf); // Adiciona um print para todos os sinais recebidos
                     fflush(stdout);
 
                     // Tratar sinal com prefixo "porta"
                     if (strncmp(buf, "porta", 5) == 0) {
-                        // Extrair número após o prefixo "porta"
                         int id = atoi(&buf[5]);
                         id_elevador = (uint8_t)id;
                         QACTIVE_PUBLISH(&openEvt, NULL);
@@ -113,6 +118,22 @@ void *udpServer() {
                         id_elevador = (uint8_t)id;
                         QACTIVE_PUBLISH(&sobe_botao_Evt, NULL);
                     }
+
+                    // Tratar sinal com prefixo "desce"
+                    if (strncmp(buf, "desce", 5) == 0) {
+                        int id = atoi(&buf[5]);
+                        id_elevador = (uint8_t)id;
+                        QACTIVE_PUBLISH(&desce_botao_Evt, NULL);
+                    }
+
+                    // Tratar sinal com prefixo "PortaAbertaA"
+                    if (strncmp(buf, "PortaAberta", 11) == 0) {
+                        int id = atoi(&buf[11]);
+                        id_elevador = (uint8_t)id;
+                        QACTIVE_PUBLISH(&porta_abriu_Evt, NULL);
+                    }
+
+                    
 
                 }
             }
@@ -262,15 +283,25 @@ void QS_onCommand(uint8_t cmdId,
 }
 #endif
 
-void BSP_porta(int id) {
+void BSP_porta(int id, int direcao) {
     int slen = sizeof(si_other);
     int siglen;
     char buffer[50];
     if (s != -1) {
-        sprintf(buffer, "acionaporta%d-1", id);
-        printf("Sinal enviado %s\n", buffer);
+        if (direcao == 1) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d+1", id);
+        }
+        else if (direcao == 0) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d00", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d-1", id);
+        }
+        printf("ENVIADO: %s\n", buffer);
         siglen = strlen(buffer);
-        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+        if (sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen) == -1) {
+            perror("Error sending data with sendto");
+        }
     }
 }
 
@@ -279,8 +310,37 @@ void BSP_botao_sobe(int id) {
     int siglen;
     char buffer[50];
     if (s != -1) {
-        sprintf(buffer, "elevadorsobeon%d", id);
-        printf("Sinal enviado %s\n", buffer);
+        snprintf(buffer, sizeof(buffer), "elevadorsobeon%d", id);
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
+void BSP_botao_desce(int id) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        snprintf(buffer, sizeof(buffer), "elevadordesceon%d", id);
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
+void BSP_porta_abriu(int id, int direcao) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        if (direcao == 1) {
+            snprintf(buffer, sizeof(buffer), "elevadorsobeoff%d", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadordesceoff%d", id);
+        }
+        printf("ENVIADO: %s\n", buffer);
         siglen = strlen(buffer);
         sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
     }

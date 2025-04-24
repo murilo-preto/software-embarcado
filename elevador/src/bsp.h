@@ -54,9 +54,11 @@ uint32_t BSP_random(void);          // pseudo-random generator
 void bsp_on();
 void bsp_off();
 
-void BSP_porta(int id);
+void BSP_porta(int id, int direcao);
 void BSP_andar(int id);
 void BSP_botao_sobe(int id);
+void BSP_botao_desce(int id);
+void BSP_porta_abriu(int id, int direcao);
 
 void sendUDP(int comando);
 #endif // BSP_H_
