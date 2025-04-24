@@ -44,6 +44,7 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
     QActive_subscribe((QActive *)me, TIME_TICK_SIG);
     QActive_subscribe((QActive *)me, OPEN_SIG);   // Open door
     QActive_subscribe((QActive *)me, CLOSE_SIG);  // Close door
+    QActive_subscribe((QActive *)me, SOBE_BOTAO_SIG); 
 
     // Arm the time event for periodic signals
     QTimeEvt_armX(&me->timeEvt, UM_SEG, 0);
@@ -62,8 +63,16 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
 
     switch (e->sig) {
         case OPEN_SIG: { // Request to open door
-            printf("Opening door %d\n", current_elevator_id);
+            printf("Abrindo porta %d\n", id_elevador);
+            BSP_porta(id_elevador);
+            id_elevador = 0;
             break;
+        }
+        case SOBE_BOTAO_SIG: { // Request to close door
+            printf("Acionando botão sobe %d\n", id_elevador);
+            BSP_botao_sobe(id_elevador);
+            id_elevador = 0;
+            break;  
         }
         case CLOSE_SIG: { // Request to close door
             status = Q_HANDLED();

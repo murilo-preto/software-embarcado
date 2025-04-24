@@ -5,6 +5,7 @@
 enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
     CLOSE_SIG,
+    SOBE_BOTAO_SIG,
     TIME_TICK_SIG,
     TERMINATE_SIG, /* terminate the application */
 	MAX_SIG
@@ -20,7 +21,7 @@ typedef struct MicroEvtTag {
 /* public: */
 } MicroEvt;
 
-extern uint8_t current_elevator_id;
+extern uint8_t id_elevador;
 
 extern QActive * const AO_tmicro;
 extern void TElevador_actor();

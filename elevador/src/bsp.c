@@ -42,12 +42,14 @@ LPHOSTENT lpHostEntry;
 pthread_t tudpServer;
 
 static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
-uint8_t current_elevator_id = 0;
+static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
+uint8_t id_elevador = 0;
 
 void sendUDP(int sig) {
     int slen = sizeof(si_other);
     int siglen;
     if (s != -1) {
+        printf("Sinal enviado %s\n", out_signals[sig]);
         siglen = strlen(out_signals[sig]);
         sendto(s, out_signals[sig], siglen, 0, (struct sockaddr *)&si_other, slen);
     }
@@ -77,12 +79,14 @@ void sendUDPSeg(int seg, int num) {
 void *udpServer() {
     struct sockaddr_in si_other;
     struct sockaddr_in si_me;
-    int i;
+
     int slen = sizeof(si_other), recv_len;
     char buf[BUFLEN];
+
     int ss = -1;
     ss = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (ss != -1) {
+
+    if (s != -1) {
         memset((char *)&si_me, 0, sizeof(si_me));
         si_me.sin_family = AF_INET;
         si_me.sin_port = htons(PORTIN);
@@ -99,8 +103,15 @@ void *udpServer() {
                     if (strncmp(buf, "porta", 5) == 0) {
                         // Extrair número após o prefixo "porta"
                         int id = atoi(&buf[5]);
-                        current_elevator_id = (uint8_t)id;
+                        id_elevador = (uint8_t)id;
                         QACTIVE_PUBLISH(&openEvt, NULL);
+                    }
+
+                    // Tratar sinal com prefixo "sobe"
+                    if (strncmp(buf, "sobe", 4) == 0) {
+                        int id = atoi(&buf[4]);
+                        id_elevador = (uint8_t)id;
+                        QACTIVE_PUBLISH(&sobe_botao_Evt, NULL);
                     }
 
                 }
@@ -251,11 +262,28 @@ void QS_onCommand(uint8_t cmdId,
 }
 #endif
 
-void BSP_porta(int i) {
-    if (i == 0)
-        sendUDP(3);
-    else
-        sendUDP(2);
+void BSP_porta(int id) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        sprintf(buffer, "acionaporta%d-1", id);
+        printf("Sinal enviado %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
+void BSP_botao_sobe(int id) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        sprintf(buffer, "elevadorsobeon%d", id);
+        printf("Sinal enviado %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
 }
 
 void BSP_andar(int i) {
