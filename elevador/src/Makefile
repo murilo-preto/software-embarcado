@@ -44,7 +44,7 @@
 #-----------------------------------------------------------------------------
 # project:
 #
-PROJECT := microndas
+PROJECT := elevador
 
 VPATH := .
 
@@ -53,7 +53,7 @@ INCLUDES := -I.
 C_SRCS := \
 	main.c \
 	bsp.c \
-	micro.c
+	elevador.c
 
 DEFINES  :=
 

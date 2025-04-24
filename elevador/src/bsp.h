@@ -34,10 +34,10 @@
 #ifndef BSP_H_
 #define BSP_H_
 
-#define BSP_TICKS_PER_SEC    100U
-#define BUFLEN  512  //Max length of buffer
-#define PORTIN  8888   //The port on which to listen for incoming data
-#define PORTOUT 8889
+#define BSP_TICKS_PER_SEC     100u
+#define BUFLEN                512 
+#define PORTIN                8888
+#define PORTOUT               8889
 
 void BSP_init(int argc, char *argv[]);
 void BSP_start(void);
@@ -53,5 +53,6 @@ void bsp_off();
 void BSP_forno(int i);
 void BSP_luz(int i);
 void BSP_digito(int seg, int num);
+void sendUDP(int comando);
 
 #endif // BSP_H_

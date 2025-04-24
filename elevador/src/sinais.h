@@ -1,15 +1,8 @@
-/*
- * sinais.h
- *
- *  Created on: 05/08/2013
- *      Author: Amaury
- */
-
 #ifndef SINAIS_H_
 #define SINAIS_H_
+#include "qp_port.h"
 
- #include "qp_port.h"
-enum ToastOvenSignals {
+enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
     CLOSE_SIG,
     PLUS1_SIG,
