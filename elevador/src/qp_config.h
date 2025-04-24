@@ -162,7 +162,7 @@
 // <c2>Enable event parameter initialization (QEVT_PAR_INIT)
 // <i>Initialize parameters of dynamic events at allocation
 // <i>(Resource Acquisition Is Initialization (RAII) for dynamic events)
-#define QEVT_PAR_INIT
+// #define QEVT_PAR_INIT
 // </c>
 
 // <c1>Enable active object stop API (QACTIVE_CAN_STOP)
