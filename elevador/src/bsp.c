@@ -79,42 +79,24 @@ void *udpServer() {
     char buf[BUFLEN];
     int ss = -1;
     ss = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (s != -1) {
-        // zero out the structure
+    if (ss != -1) {
         memset((char *)&si_me, 0, sizeof(si_me));
         si_me.sin_family = AF_INET;
         si_me.sin_port = htons(PORTIN);
         si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-        //
+
         if (bind(ss, (struct sockaddr *)&si_me, sizeof(si_me)) != -1) {
             while (1) {
                 if ((recv_len = recvfrom(ss, buf, BUFLEN, 0, (struct sockaddr *)&si_other, &slen)) != -1) {
                     buf[recv_len] = '\0';
                     printf("Sinal recebido: %s\n", buf); // Adiciona um print para todos os sinais recebidos
                     fflush(stdout);
-                    for (i = 0; i < 4; i++) {
-                        if (strcmp(buf, in_signals[i]) == 0) {
-                            // MicroEvt *pe;
-                            static QEvt const cancelEvt = QEVT_INITIALIZER(CANCEL_SIG);
-                            static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
-                            static QEvt const closeEvt = QEVT_INITIALIZER(CLOSE_SIG);
-                            static QEvt const plusEvt = QEVT_INITIALIZER(PLUS1_SIG);
-                            switch (i) {
-                                case 0:
-                                    QACTIVE_PUBLISH(&cancelEvt, NULL);
-                                    break;
-                                case 1:
-                                    QACTIVE_PUBLISH(&openEvt, NULL);
-                                    break;
-                                case 2:
-                                    QACTIVE_PUBLISH(&closeEvt, NULL);
-                                    break;
-                                case 3:
-                                    QACTIVE_PUBLISH(&plusEvt, NULL);
-                                    break;
-                            }
-                        }
+
+                    if (strncmp(buf, "porta", 5) == 0) {
+                        static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
+                        QACTIVE_PUBLISH(&openEvt, NULL);
                     }
+
                 }
             }
         }
@@ -254,7 +236,6 @@ void QF_onClockTick(void) {
 }
 
 #ifdef Q_SPY
-
 void QS_onCommand(uint8_t cmdId,
                   uint32_t param1, uint32_t param2, uint32_t param3) {
     Q_UNUSED_PAR(cmdId);

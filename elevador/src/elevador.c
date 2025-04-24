@@ -11,11 +11,6 @@ enum InternalSignals {
     TIMEOUT_SIG = MAX_SIG 
 };
 
-#define ANDAR_TERREO 0
-#define ANDAR_MAXIMO 9
-#define ELEVADOR_PARADO 0
-#define ELEVADOR_SUBINDO 1
-#define ELEVADOR_DESCENDO 2
 
 typedef struct TElevadorTag {
     QActive super;       
@@ -45,16 +40,6 @@ void TElevador_actor() {
 QState TElevador_inicial(TElevador * const me, QEvt const *e) {
     (void)e; // Suppress unused parameter warning
 
-    // Initialize hardware and variables
-    me->andar_atual = ANDAR_TERREO;   // Start at ground floor
-    me->andar_destino = ANDAR_TERREO; // No destination initially
-    me->status = ELEVADOR_PARADO;     // Initially stopped
-    me->porta_aberta = 0;             // Door initially closed
-    
-    // Initialize display and elevator components
-    // sendUDP(0);  // acionaportaAS - door control
-    // TElevador_display(me->andar_atual); // Display current floor
-    
     // Subscribe to relevant signals
     QActive_subscribe((QActive *)me, TIME_TICK_SIG);
     QActive_subscribe((QActive *)me, OPEN_SIG);   // Open door
@@ -77,13 +62,7 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
 
     switch (e->sig) {
         case OPEN_SIG: { // Request to open door
-            if (!me->porta_aberta) {
-                BSP_porta(me->porta_aberta);
-                me->porta_aberta = 1;
-                status = Q_TRAN(&TElevador_porta_aberta); 
-            } else {
-                status = Q_HANDLED(); 
-            }
+            printf("Opening door...\n");
             break;
         }
         case CLOSE_SIG: { // Request to close door

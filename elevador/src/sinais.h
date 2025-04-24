@@ -5,8 +5,6 @@
 enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
     CLOSE_SIG,
-    PLUS1_SIG,
-    CANCEL_SIG,
     TIME_TICK_SIG,
     TERMINATE_SIG, /* terminate the application */
 	MAX_SIG
