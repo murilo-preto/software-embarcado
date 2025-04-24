@@ -1,3 +1,4 @@
 *.vscode
 */build
 /elevador/src/build
+/philo/src/build
