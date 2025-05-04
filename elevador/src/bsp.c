@@ -1,17 +1,17 @@
 #include "bsp.h"
-
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <windows.h>
-
 #include "qpc.h"
 #include "safe_std.h"
 #include "sinais.h"
 
 Q_DEFINE_THIS_FILE
+
+# define len_fila 64
 
 static uint32_t l_rnd;
 char *out_signals[] = {
@@ -45,11 +45,12 @@ static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
 static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
 static QEvt const desce_botao_Evt = QEVT_INITIALIZER(DESCE_BOTAO_SIG);
 static QEvt const porta_abriu_Evt = QEVT_INITIALIZER(PORTA_ABRIU_SIG);
+static QEvt const sinal_cabine_Evt = QEVT_INITIALIZER(CABINE_SIG);
+static QEvt const sinal_parado_Evt = QEVT_INITIALIZER(PARADO_SIG);
+static QEvt const sinal_andar_Evt = QEVT_INITIALIZER(ANDAR_SIG);
 
-uint8_t id_elevador = 0;
-uint8_t pos_elevador1 = 0;
-uint8_t pos_elevador2 = 0;
-uint8_t pos_elevador3 = 0;
+uint8_t andar = 0;
+uint8_t fila[len_fila] = {0};
 
 void sendUDP(int sig) {
     int slen = sizeof(si_other);
@@ -108,33 +109,51 @@ void *udpServer() {
                     // Tratar sinal com prefixo "porta"
                     if (strncmp(buf, "porta", 5) == 0) {
                         int id = atoi(&buf[5]);
-                        id_elevador = (uint8_t)id;
+                        andar = (uint8_t)id;
                         QACTIVE_PUBLISH(&openEvt, NULL);
                     }
 
                     // Tratar sinal com prefixo "sobe"
                     if (strncmp(buf, "sobe", 4) == 0) {
                         int id = atoi(&buf[4]);
-                        id_elevador = (uint8_t)id;
+                        andar = (uint8_t)id;
                         QACTIVE_PUBLISH(&sobe_botao_Evt, NULL);
                     }
 
                     // Tratar sinal com prefixo "desce"
                     if (strncmp(buf, "desce", 5) == 0) {
                         int id = atoi(&buf[5]);
-                        id_elevador = (uint8_t)id;
+                        andar = (uint8_t)id;
                         QACTIVE_PUBLISH(&desce_botao_Evt, NULL);
                     }
 
                     // Tratar sinal com prefixo "PortaAbertaA"
                     if (strncmp(buf, "PortaAberta", 11) == 0) {
                         int id = atoi(&buf[11]);
-                        id_elevador = (uint8_t)id;
+                        andar = (uint8_t)id;
                         QACTIVE_PUBLISH(&porta_abriu_Evt, NULL);
                     }
 
-                    
-
+                    // Tratar sinal com prefixo "cabine"
+                    if (strncmp(buf, "cabine", 6) == 0) {
+                        int id = atoi(&buf[6]);
+                        andar = (uint8_t)id;
+                        QACTIVE_PUBLISH(&sinal_cabine_Evt, NULL);
+                    }
+ 
+                    // Tratar sinal com prefixo "andar"
+                    if (strncmp(buf, "Andar", 5) == 0) {
+                        int id = atoi(&buf[5]);
+                        andar = (uint8_t)id;
+                        QACTIVE_PUBLISH(&sinal_andar_Evt, NULL);
+                    }
+ 
+                    // Tratar sinal com prefixo "Parado"
+                    if (strncmp(buf, "Parado", 6) == 0) {
+                        int id = atoi(&buf[6]);
+                        andar = (uint8_t)id;
+                        QACTIVE_PUBLISH(&sinal_parado_Evt, NULL);
+                    }
                 }
             }
         }
@@ -304,6 +323,56 @@ void BSP_porta(int id, int direcao) {
         }
     }
 }
+
+
+void print_fila(uint8_t fila[]) {
+    int length = len_fila;
+    int i = 0;
+    for (i = 0; i < length; i++) {
+        if (fila[i] != 0) {
+            printf("%d ", fila[i]);
+        }
+    }
+}
+
+
+void append_fila(uint8_t fila[], uint8_t novo_andar) {
+    int length = len_fila;
+    int i = 0;
+    for (i = 0; i < length; i++) {
+        if (fila[i] == 0) {
+            fila[i] = novo_andar;
+            break;
+        }
+    }
+}
+
+
+void BSP_atualiza_display(int id) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        snprintf(buffer, sizeof(buffer), "elevadordigito%d", id);
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
+
+void BSP_ir_para_andar(int id) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        snprintf(buffer, sizeof(buffer), "acionacarro%d", id);
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
 
 void BSP_botao_sobe(int id) {
     int slen = sizeof(si_other);

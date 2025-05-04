@@ -48,14 +48,19 @@ void BSP_displayPaused(uint8_t paused);
 void BSP_displayPhilStat(uint8_t n, uint8_t st, char const *stat);
 void BSP_terminate(int16_t result);
 
-void BSP_randomSeed(uint32_t seed); // random seed
-uint32_t BSP_random(void);          // pseudo-random generator
+void BSP_randomSeed(uint32_t seed);
+uint32_t BSP_random(void);
 
 void bsp_on();
 void bsp_off();
 
+void print_fila(uint8_t fila[]);
+void append_fila(uint8_t fila[], uint8_t novo_andar);
+
 void BSP_porta(int id, int direcao);
 void BSP_andar(int id);
+void BSP_ir_para_andar(int id);
+void BSP_atualiza_display(int id);
 void BSP_botao_sobe(int id);
 void BSP_botao_desce(int id);
 void BSP_porta_abriu(int id, int direcao);

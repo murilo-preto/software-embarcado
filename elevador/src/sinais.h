@@ -5,9 +5,12 @@
 enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
     CLOSE_SIG,
+    ANDAR_SIG,
+    PARADO_SIG,
     SOBE_BOTAO_SIG,
     DESCE_BOTAO_SIG,
     PORTA_ABRIU_SIG,
+    CABINE_SIG,
     TIME_TICK_SIG,
     TERMINATE_SIG,
 	MAX_SIG
@@ -23,10 +26,8 @@ typedef struct MicroEvtTag {
 /* public: */
 } MicroEvt;
 
-extern uint8_t id_elevador;
-extern uint8_t pos_elevador1;
-extern uint8_t pos_elevador2;
-extern uint8_t pos_elevador3;
+extern uint8_t andar;
+extern uint8_t fila[];
 
 extern QActive * const AO_tmicro;
 extern void TElevador_actor();
