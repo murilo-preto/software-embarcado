@@ -370,6 +370,7 @@ void atualiza_fila(uint8_t fila[]) {
             fila[i] = fila[i+1];
         }
     }
+    print_fila(fila);
 }
 
 

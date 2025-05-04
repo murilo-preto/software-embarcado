@@ -13,6 +13,7 @@ typedef struct TElevadorTag {
     QActive super;       
     QTimeEvt timeEvt;    
     int queue;
+    int andar_atual;
 } TElevador;
 
 static TElevador l_TElevador;
@@ -163,9 +164,20 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
         case PORTA_FECHOU_SIG: {
             printf("Movimento: Porta %d fechou\n", andar);
 
-            if (fila[0] != 0){
-                BSP_ir_para_andar(fila[0]); // Move to the next floor
-                status = Q_HANDLED();
+            if (fila[0] != 0){ // Fila nao vazia
+                if (fila[0] != me->andar_atual) { // Andar destino diferente do atual
+                    BSP_ir_para_andar(fila[0]); // Vai para proximo andar da lista
+                    status = Q_HANDLED();
+                }
+                else { // Andar destino igual ao atual
+                    printf("Movimento -> Parado\n");
+                    BSP_atualiza_display(andar);
+                    BSP_porta(andar, -1);
+
+                    atualiza_fila(fila);
+
+                    status = Q_TRAN(&TElevador_parado);
+                }
             }
             else {
                 me->queue = 0;
@@ -190,8 +202,10 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
             printf("Movimento -> Parado\n");
             BSP_atualiza_display(andar);
             BSP_porta(andar, -1);
+
+            me->andar_atual = fila[0];
             atualiza_fila(fila);
-            print_fila(fila);
+
             status = Q_TRAN(&TElevador_parado);
             break;    
         }
