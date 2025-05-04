@@ -355,6 +355,7 @@ void append_fila(uint8_t fila[], uint8_t novo_andar) {
             break;
         }
     }
+    print_fila(fila);
 }
 
 

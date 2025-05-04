@@ -12,6 +12,7 @@ enum InternalSignals {
 typedef struct TElevadorTag {
     QActive super;       
     QTimeEvt timeEvt;    
+    int queue;
 } TElevador;
 
 static TElevador l_TElevador;
@@ -32,6 +33,8 @@ void TElevador_actor() {
 /* Initial state of the elevator */
 QState TElevador_inicial(TElevador * const me, QEvt const *e) {
     (void)e; // Suppress unused parameter warning
+
+    me->queue = 0;
 
     QActive_subscribe((QActive *)me, OPEN_SIG);  
     QActive_subscribe((QActive *)me, CLOSE_SIG);
@@ -67,6 +70,11 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
             status = Q_HANDLED();
             break;
         }
+        case TIME_TICK_SIG: {
+            printf("Parado: Tick\n");
+            status = Q_HANDLED();
+            break;
+        }
         case PARADO_SIG: {
             printf("Parado: Elevador parado no andar %d\n", andar);
             status = Q_HANDLED();
@@ -81,10 +89,15 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
             printf("Parado: Cabine acionada %d\n", andar);
 
             append_fila(fila, andar);
-            print_fila(fila);
 
-            printf("Parado -> Movimento\n");
-            status = Q_TRAN(&TElevador_movimento);   
+            if (me->queue == 0) {
+                me->queue = 1;
+                printf("Parado -> Movimento\n");
+                status = Q_TRAN(&TElevador_movimento);
+            } else {
+                status = Q_HANDLED();
+            }
+
             break;
         }
         case SOBE_BOTAO_SIG: { 
@@ -103,10 +116,8 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
         }
         case PORTA_ABRIU_SIG: {
             printf("Parado: Porta do elevador %d terminou de abrir\n", andar);
-
-            QTimeEvt_armX(&me->timeEvt, 3 * UM_SEG, 0); // 3 segundos, sem repetição
-            printf("Parado -> Espera\n");
             
+            printf("Parado -> Espera\n");
             status = Q_TRAN(&TElevador_espera);
             break;
         }
@@ -157,6 +168,7 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
                 status = Q_HANDLED();
             }
             else {
+                me->queue = 0;
                 status = Q_TRAN(&TElevador_parado); // No more floors in the queue
             }
             
@@ -165,6 +177,12 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
         case ANDAR_SIG: {
             printf("Movimento: Elevador passou pelo andar %d\n", andar);
             BSP_atualiza_display(andar);
+            status = Q_HANDLED();
+            break;
+        }
+        case CABINE_SIG: {
+            printf("Movimento: Cabine acionada %d\n", andar);
+            append_fila(fila, andar); // Add the current floor to the queue
             status = Q_HANDLED();
             break;
         }
@@ -216,6 +234,7 @@ static QState TElevador_espera(TElevador * const me, QEvt const * const e) {
     switch (e->sig) {
         case Q_INIT_SIG: {
             printf("Espera: Init\n");
+            QTimeEvt_armX(&me->timeEvt, 3 * UM_SEG, 0); // 3 segundos, sem repetição
             status = Q_HANDLED();
             break;
         }
@@ -231,6 +250,12 @@ static QState TElevador_espera(TElevador * const me, QEvt const * const e) {
         case TIME_TICK_SIG: {
             printf("Espera -> Movimento\n");
             status = Q_TRAN(&TElevador_movimento);
+            break;
+        }
+        case CABINE_SIG : {
+            printf("Espera: Cabine acionada %d\n", andar);
+            append_fila(fila, andar); // Add the current floor to the queue
+            status = Q_HANDLED();
             break;
         }
         case Q_EXIT_SIG: {
