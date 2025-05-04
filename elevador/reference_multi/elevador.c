@@ -21,19 +21,29 @@ typedef struct TElevadorTag {
     QTimeEvt timeEvt;    
 } TElevador;
 
-static TElevador l_TElevador;
+static TElevador l_TElevador1, l_TElevador2, l_TElevador3;
+
+QActive * const AO_tmicro1 = (QActive *)&l_TElevador1;
+QActive * const AO_tmicro2 = (QActive *)&l_TElevador2;
+QActive * const AO_tmicro3 = (QActive *)&l_TElevador3;
 
 static QState TElevador_parado(TElevador * const me, QEvt const * const e);
 static QState TElevador_movimento(TElevador * const me, QEvt const * const e);
 static QState TElevador_inicial(TElevador * const me, QEvt const *e);
 static QState TElevador_porta_aberta(TElevador * const me, QEvt const * const e);
 
-QActive * const AO_tmicro = (QActive *)&l_TElevador;
 
-void TElevador_actor() {
-    TElevador * const me = &l_TElevador;
-    QActive_ctor(&me->super, Q_STATE_CAST(&TElevador_inicial)); // Initialize the base class
-    QTimeEvt_ctorX(&me->timeEvt, &me->super, TIME_TICK_SIG, 0U); // Initialize the time event
+void TElevador_actor(int id) {
+    TElevador * me;
+    switch(id) {
+        case 1: me = &l_TElevador1; break;
+        case 2: me = &l_TElevador2; break;
+        case 3: me = &l_TElevador3; break;
+        default: return;
+    }
+    me->id = id; // Defina o ID do elevador
+    QActive_ctor(&me->super, Q_STATE_CAST(&TElevador_inicial));
+    QTimeEvt_ctorX(&me->timeEvt, &me->super, TIME_TICK_SIG, 0U);
 }
 
 /* Initial state of the elevator */
@@ -42,12 +52,11 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
 
     // Subscribe to relevant signals
     QActive_subscribe((QActive *)me, TIME_TICK_SIG);
-    QActive_subscribe((QActive *)me, OPEN_SIG);   // Open door
-    QActive_subscribe((QActive *)me, CLOSE_SIG);  // Close door
+    QActive_subscribe((QActive *)me, OPEN_SIG);  
+    QActive_subscribe((QActive *)me, CLOSE_SIG); 
     QActive_subscribe((QActive *)me, SOBE_BOTAO_SIG); 
     QActive_subscribe((QActive *)me, DESCE_BOTAO_SIG); 
     QActive_subscribe((QActive *)me, PORTA_ABRIU_SIG); 
-
 
     // Arm the time event for periodic signals
     QTimeEvt_armX(&me->timeEvt, UM_SEG, 0);
@@ -61,30 +70,34 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
 QState TElevador_parado(TElevador * const me, QEvt const * const e) {
     QState status = Q_HANDLED(); // Default to handled state
 
-    // Log the received signal
-    // printf("RECEBIDO: <TElevador_parado>: %d\n", e->sig);
-
     switch (e->sig) {
-        case OPEN_SIG: { // Request to open door
-            printf("Abrindo porta %d\n", id_elevador);
-            BSP_porta(id_elevador, 0);
-            id_elevador = 0;
+        case OPEN_SIG: {
+            MicroEvt *evt = (MicroEvt *)e;
+            if (evt->elevador_id == me->id) { // Verifique o ID
+                printf("Abrindo porta %d\n", me->id);
+                BSP_porta(me->id, 0);
+                status = Q_HANDLED();
+            }
             break;
         }
         case SOBE_BOTAO_SIG: { // Request to close door
-            printf("Acionando botao sobe %d\n", id_elevador);
-            BSP_botao_sobe(id_elevador);
-            BSP_porta(id_elevador, 1);
-            id_elevador = 0;
-            status = Q_HANDLED();
+            MicroEvt *evt = (MicroEvt *)e;
+            if (evt->elevador_id == me->id) { // Verifique o ID
+                printf("Acionando botao sobe %d\n", me->id);
+                BSP_botao_sobe(me->id);
+                BSP_porta(me->id, 1);
+                status = Q_HANDLED();
+            }
             break;  
         }
         case DESCE_BOTAO_SIG: { // Request to close door
-            printf("Acionando botao desce %d\n", id_elevador);
-            BSP_botao_desce(id_elevador);
-            BSP_porta(id_elevador, (-1));
-            id_elevador = 0;
-            status = Q_HANDLED();
+            MicroEvt *evt = (MicroEvt *)e;
+            if (evt->elevador_id == me->id) { // Verifique o ID
+                printf("Acionando botao desce %d\n", me->id);
+                BSP_botao_desce(me->id);
+                BSP_porta(me->id, (-1));
+                status = Q_HANDLED();
+            }
             break;  
         }
         case CLOSE_SIG: { // Request to close door
@@ -92,10 +105,13 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
             break;
         }
         case PORTA_ABRIU_SIG: {
-            printf("Porta do elevador %d terminou de abrir\n", id_elevador);
-            BSP_porta_abriu(id_elevador, 1);
-            id_elevador = 0;
-            status = Q_TRAN(&TElevador_porta_aberta);
+            MicroEvt *evt = (MicroEvt *)e;
+            if (evt->elevador_id != me->id) { // Ignore if not for this elevator
+                printf("Porta do elevador %d terminou de abrir\n", me->id);
+                BSP_porta_abriu(me->id, 1);
+                BSP_cabine(me->id, 1);
+                status = Q_TRAN(&TElevador_porta_aberta);
+            }
             break;
         }
         default: {
@@ -111,20 +127,17 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
 QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
     QState status;
 
-    // Log the received signal
-    // printf("RECEBIDO: <TElevador_movimento>: %d\n", e->sig);
-
     switch (e->sig) {
-        case OPEN_SIG: { // Request to open door (ignored while moving)
-            status = Q_HANDLED(); // Ignore door open requests while moving
+        case OPEN_SIG: { 
+            status = Q_HANDLED(); 
             break;
         }
-        case CLOSE_SIG: { // Request to close door
-            status = Q_HANDLED(); // Door already closed in movement state
+        case CLOSE_SIG: { 
+            status = Q_HANDLED();
             break;
         }
         default: {
-            status = Q_SUPER(&QHsm_top); // Pass unhandled signals to the top state
+            status = Q_SUPER(&QHsm_top); 
             break;
         }
     }

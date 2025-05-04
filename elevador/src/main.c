@@ -33,24 +33,11 @@
 //============================================================================
 #include "qpc.h"          // QP/C real-time embedded framework
 #include "bsp.h"          // Board Support Package
-#include <stdio.h>       // standard I/O
 
 //............................................................................
-// int main(int argc, char *argv[]) {
-//     QF_init();            // initialize the framework
-//     BSP_init(argc, argv); // initialize the BSP
-//     BSP_start();          // start the AOs/Threads
-//     return QF_run();      // run the QF application (contains the main loop)
-// }
-
-
 int main(int argc, char *argv[]) {
-    printf("Initializing QF...\n");
-    QF_init();
-    printf("Initializing BSP...\n");
-    BSP_init(argc, argv);
-    printf("Starting AOs...\n");
-    BSP_start();
-    printf("Running QF...\n");
-    return QF_run();
+    QF_init();            // initialize the framework
+    BSP_init(argc, argv); // initialize the BSP
+    BSP_start();          // start the AOs/Threads
+    return QF_run();      // run the QF application (contains the main loop)
 }

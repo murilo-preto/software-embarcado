@@ -45,20 +45,22 @@ static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
 static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
 static QEvt const desce_botao_Evt = QEVT_INITIALIZER(DESCE_BOTAO_SIG);
 static QEvt const porta_abriu_Evt = QEVT_INITIALIZER(PORTA_ABRIU_SIG);
-
 uint8_t id_elevador = 0;
-uint8_t pos_elevador1 = 0;
-uint8_t pos_elevador2 = 0;
-uint8_t pos_elevador3 = 0;
 
-void sendUDP(int sig) {
-    int slen = sizeof(si_other);
-    int siglen;
-    if (s != -1) {
-        printf("ENVIADO: %s\n", out_signals[sig]);
-        siglen = strlen(out_signals[sig]);
-        sendto(s, out_signals[sig], siglen, 0, (struct sockaddr *)&si_other, slen);
-    }
+// void sendUDP(int sig) {
+//     int slen = sizeof(si_other);
+//     int siglen;
+//     if (s != -1) {
+//         printf("ENVIADO: %s\n", out_signals[sig]);
+//         siglen = strlen(out_signals[sig]);
+//         sendto(s, out_signals[sig], siglen, 0, (struct sockaddr *)&si_other, slen);
+//     }
+// }
+
+void sendUDP(int sig, int elevador_id) { // Adicione parâmetro de ID
+    char buffer[50];
+    snprintf(buffer, sizeof(buffer), out_signals[sig], elevador_id);
+    sendto(s, buffer, strlen(buffer), 0, (struct sockaddr *)&si_other, sizeof(si_other));
 }
 
 void sendUDPSeg(int seg, int num) {
@@ -107,34 +109,64 @@ void *udpServer() {
 
                     // Tratar sinal com prefixo "porta"
                     if (strncmp(buf, "porta", 5) == 0) {
+                        // Extrair número após o prefixo "porta"
                         int id = atoi(&buf[5]);
-                        id_elevador = (uint8_t)id;
-                        QACTIVE_PUBLISH(&openEvt, NULL);
+                        MicroEvt *evt = Q_NEW(MicroEvt, OPEN_SIG);
+                        evt->elevador_id = id;
+                        switch(id) {
+                            case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                            case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                            case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                        }
                     }
 
                     // Tratar sinal com prefixo "sobe"
                     if (strncmp(buf, "sobe", 4) == 0) {
                         int id = atoi(&buf[4]);
-                        id_elevador = (uint8_t)id;
-                        QACTIVE_PUBLISH(&sobe_botao_Evt, NULL);
+                        MicroEvt *evt = Q_NEW(MicroEvt, SOBE_BOTAO_SIG);
+                        evt->elevador_id = id;
+                        switch(id) {
+                            case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                            case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                            case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                        }
                     }
 
                     // Tratar sinal com prefixo "desce"
                     if (strncmp(buf, "desce", 5) == 0) {
                         int id = atoi(&buf[5]);
-                        id_elevador = (uint8_t)id;
-                        QACTIVE_PUBLISH(&desce_botao_Evt, NULL);
+                        MicroEvt *evt = Q_NEW(MicroEvt, DESCE_BOTAO_SIG);
+                        evt->elevador_id = id;
+                        switch(id) {
+                            case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                            case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                            case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                        }
                     }
 
-                    // Tratar sinal com prefixo "PortaAbertaA"
+                    // Tratar sinal com prefixo "PortaAberta"
                     if (strncmp(buf, "PortaAberta", 11) == 0) {
                         int id = atoi(&buf[11]);
-                        id_elevador = (uint8_t)id;
-                        QACTIVE_PUBLISH(&porta_abriu_Evt, NULL);
+                        MicroEvt *evt = Q_NEW(MicroEvt, PORTA_ABRIU_SIG);
+                        evt->elevador_id = id;
+                        switch(id) {
+                            case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                            case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                            case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                        }
                     }
 
-                    
-
+                    // Tratar sinal com prefixo "PortaAberta"
+                    // if (strncmp(buf, "PortaAberta", 11) == 0) {
+                    //     int id = atoi(&buf[11]);
+                    //     MicroEvt *evt = Q_NEW(MicroEvt, PORTA_ABRIU_SIG);
+                    //     evt->elevador_id = id;
+                    //     switch(id) {
+                    //         case 1: QACTIVE_POST(AO_tmicro1, &evt->super, NULL); break;
+                    //         case 2: QACTIVE_POST(AO_tmicro2, &evt->super, NULL); break;
+                    //         case 3: QACTIVE_POST(AO_tmicro3, &evt->super, NULL); break;
+                    //     }
+                    // }
                 }
             }
         }
@@ -142,17 +174,17 @@ void *udpServer() {
     return NULL;
 }
 
-void bsp_on() {
-    printf("on\n");
-    fflush(stdout);
-    sendUDP(1);
-}
+// void bsp_on() {
+//     printf("on\n");
+//     fflush(stdout);
+//     sendUDP(1);
+// }
 
-void bsp_off() {
-    printf("off\n");
-    fflush(stdout);
-    sendUDP(0);
-}
+// void bsp_off() {
+//     printf("off\n");
+//     fflush(stdout);
+//     sendUDP(0);
+// }
 
 #ifdef Q_SPY
 enum {
@@ -208,14 +240,42 @@ void BSP_start(void) {
     QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
     static QSubscrList subscrSto[MAX_PUB_SIG];
     QActive_psInit(subscrSto, Q_DIM(subscrSto));
-    static QEvtPtr l_microQueueSto[QUEUESIZE];
-    TElevador_actor();
-    QActive_start(AO_tmicro,
-                  7U,
-                  l_microQueueSto,
-                  Q_DIM(l_microQueueSto),
-                  (void *)0, 0U,
-                  (void *)0);
+    // static QEvtPtr l_microQueueSto[QUEUESIZE];
+
+    printf("Instatinating actors...\n");
+
+    TElevador_actor(1);
+    TElevador_actor(2);
+    TElevador_actor(3);
+
+    printf("QActive start...\n");
+
+    static QEvtPtr l_microQueueSto1[QUEUESIZE];  // Separate queues
+    static QEvtPtr l_microQueueSto2[QUEUESIZE];
+    static QEvtPtr l_microQueueSto3[QUEUESIZE];
+
+    QActive_start(AO_tmicro1,
+                1U,  // Unique priority (1, 2, 3)
+                l_microQueueSto1,
+                Q_DIM(l_microQueueSto1),
+                (void *)0, 0U,
+                (void *)0);
+
+    QActive_start(AO_tmicro2,
+                2U,  // Unique priority
+                l_microQueueSto2,
+                Q_DIM(l_microQueueSto2),
+                (void *)0, 0U,
+                (void *)0);
+
+    QActive_start(AO_tmicro3,
+                3U,  // Unique priority
+                l_microQueueSto3,
+                Q_DIM(l_microQueueSto3),
+                (void *)0, 0U,
+                (void *)0);
+
+    printf("Ran all start procuderes...\n");
 }
 
 void BSP_terminate(int16_t result) {
@@ -346,9 +406,19 @@ void BSP_porta_abriu(int id, int direcao) {
     }
 }
 
-void BSP_andar(int i) {
-    if (i == 0)
-        sendUDP(1);
-    else
-        sendUDP(0);
+void BSP_cabine(int id, int mode) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        if (mode == 1) {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineon%d", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineoff%d", id);
+        }
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
 }
