@@ -45,6 +45,7 @@ static QEvt const openEvt = QEVT_INITIALIZER(OPEN_SIG);
 static QEvt const sobe_botao_Evt = QEVT_INITIALIZER(SOBE_BOTAO_SIG);
 static QEvt const desce_botao_Evt = QEVT_INITIALIZER(DESCE_BOTAO_SIG);
 static QEvt const porta_abriu_Evt = QEVT_INITIALIZER(PORTA_ABRIU_SIG);
+static QEvt const porta_fechou_Evt = QEVT_INITIALIZER(PORTA_FECHOU_SIG);
 static QEvt const sinal_cabine_Evt = QEVT_INITIALIZER(CABINE_SIG);
 static QEvt const sinal_parado_Evt = QEVT_INITIALIZER(PARADO_SIG);
 static QEvt const sinal_andar_Evt = QEVT_INITIALIZER(ANDAR_SIG);
@@ -134,6 +135,13 @@ void *udpServer() {
                         QACTIVE_PUBLISH(&porta_abriu_Evt, NULL);
                     }
 
+                    // Tratar sinal com prefixo "PortaFechadaA"
+                    if (strncmp(buf, "PortaFechada", 12) == 0) {
+                        int id = atoi(&buf[12]);
+                        andar = (uint8_t)id;
+                        QACTIVE_PUBLISH(&porta_fechou_Evt, NULL);
+                    }
+
                     // Tratar sinal com prefixo "cabine"
                     if (strncmp(buf, "cabine", 6) == 0) {
                         int id = atoi(&buf[6]);
@@ -147,7 +155,7 @@ void *udpServer() {
                         andar = (uint8_t)id;
                         QACTIVE_PUBLISH(&sinal_andar_Evt, NULL);
                     }
- 
+  
                     // Tratar sinal com prefixo "Parado"
                     if (strncmp(buf, "Parado", 6) == 0) {
                         int id = atoi(&buf[6]);
@@ -302,19 +310,19 @@ void QS_onCommand(uint8_t cmdId,
 }
 #endif
 
-void BSP_porta(int id, int direcao) {
+void BSP_porta(int andar, int modo) {
     int slen = sizeof(si_other);
     int siglen;
     char buffer[50];
     if (s != -1) {
-        if (direcao == 1) {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d+1", id);
+        if (modo == 1) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d+1", andar);
         }
-        else if (direcao == 0) {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d00", id);
+        else if (modo == 0) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d00", andar);
         }
         else {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d-1", id);
+            snprintf(buffer, sizeof(buffer), "acionaporta%d-1", andar);
         }
         printf("ENVIADO: %s\n", buffer);
         siglen = strlen(buffer);
@@ -328,11 +336,13 @@ void BSP_porta(int id, int direcao) {
 void print_fila(uint8_t fila[]) {
     int length = len_fila;
     int i = 0;
+    printf("Fila: ");
     for (i = 0; i < length; i++) {
         if (fila[i] != 0) {
             printf("%d ", fila[i]);
         }
     }
+    printf("\n");
 }
 
 
@@ -346,6 +356,21 @@ void append_fila(uint8_t fila[], uint8_t novo_andar) {
         }
     }
 }
+
+
+void atualiza_fila(uint8_t fila[]) {
+    int length = len_fila;
+    int i = 0;
+    for (i = 0; i < length-1; i++) {
+        if (fila[i] == 0) {
+            break;
+        }    
+        else{
+            fila[i] = fila[i+1];
+        }
+    }
+}
+
 
 
 void BSP_atualiza_display(int id) {
@@ -413,11 +438,4 @@ void BSP_porta_abriu(int id, int direcao) {
         siglen = strlen(buffer);
         sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
     }
-}
-
-void BSP_andar(int i) {
-    if (i == 0)
-        sendUDP(1);
-    else
-        sendUDP(0);
 }

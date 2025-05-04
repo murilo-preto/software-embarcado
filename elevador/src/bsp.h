@@ -56,6 +56,7 @@ void bsp_off();
 
 void print_fila(uint8_t fila[]);
 void append_fila(uint8_t fila[], uint8_t novo_andar);
+void atualiza_fila(uint8_t fila[]);
 
 void BSP_porta(int id, int direcao);
 void BSP_andar(int id);

@@ -10,6 +10,7 @@ enum SinaisElevador {
     SOBE_BOTAO_SIG,
     DESCE_BOTAO_SIG,
     PORTA_ABRIU_SIG,
+    PORTA_FECHOU_SIG,
     CABINE_SIG,
     TIME_TICK_SIG,
     TERMINATE_SIG,
