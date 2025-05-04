@@ -1,7 +1,7 @@
 //============================================================================
-// Product: DPP example (console)
-// Last Updated for Version: 7.3.0
-// Date of the Last Update:  2023-08-12
+// APP example
+// Last updated for version 7.3.0
+// Last updated on  2023-08-09
 //
 //                   Q u a n t u m  L e a P s
 //                   ------------------------
@@ -31,34 +31,26 @@
 // <www.state-machine.com/licensing>
 // <info@state-machine.com>
 //============================================================================
-#ifndef BSP_H_
-#define BSP_H_
+#include "qpc.h"          // QP/C real-time embedded framework
+#include "bsp.h"          // Board Support Package
+#include <stdio.h>       // standard I/O
 
-#include <stdint.h> 
+//............................................................................
+// int main(int argc, char *argv[]) {
+//     QF_init();            // initialize the framework
+//     BSP_init(argc, argv); // initialize the BSP
+//     BSP_start();          // start the AOs/Threads
+//     return QF_run();      // run the QF application (contains the main loop)
+// }
 
 
-#define BSP_TICKS_PER_SEC     100u
-#define BUFLEN                512 
-#define PORTIN                8888
-#define PORTOUT               8889
-
-void BSP_init(int argc, char *argv[]);
-void BSP_start(void);
-void BSP_displayPaused(uint8_t paused);
-void BSP_displayPhilStat(uint8_t n, uint8_t st, char const *stat);
-void BSP_terminate(int16_t result);
-
-void BSP_randomSeed(uint32_t seed); // random seed
-uint32_t BSP_random(void);          // pseudo-random generator
-
-void bsp_on();
-void bsp_off();
-
-void BSP_porta(int id, int direcao);
-void BSP_andar(int id);
-void BSP_botao_sobe(int id);
-void BSP_botao_desce(int id);
-void BSP_porta_abriu(int id, int direcao);
-
-void sendUDP(int comando);
-#endif // BSP_H_
+int main(int argc, char *argv[]) {
+    printf("Initializing QF...\n");
+    QF_init();
+    printf("Initializing BSP...\n");
+    BSP_init(argc, argv);
+    printf("Starting AOs...\n");
+    BSP_start();
+    printf("Running QF...\n");
+    return QF_run();
+}

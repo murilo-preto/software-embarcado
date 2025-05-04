@@ -59,6 +59,10 @@ void BSP_andar(int id);
 void BSP_botao_sobe(int id);
 void BSP_botao_desce(int id);
 void BSP_porta_abriu(int id, int direcao);
+void BSP_cabine(int id, int mode);
 
-void sendUDP(int comando);
+
+// void sendUDP(int comando);
+void sendUDP(int comando, int elevador_id);
+
 #endif // BSP_H_
