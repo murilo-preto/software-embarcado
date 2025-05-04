@@ -350,11 +350,10 @@ void append_fila(uint8_t fila[], uint8_t novo_andar) {
     int length = len_fila;
     int i = 0;
     for (i = 0; i < length; i++) {
-        if (fila[i] == novo_andar) {
-            printf("Andar %d já está na fila\n", novo_andar);
-            break;
-        }
         if (fila[i] == 0) {
+            if (i>0 && fila[i-1] == novo_andar){
+                break;
+            }
             fila[i] = novo_andar;
             break;
         }
