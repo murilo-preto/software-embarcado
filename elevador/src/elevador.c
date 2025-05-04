@@ -50,6 +50,7 @@ QState TElevador_inicial(TElevador * const me, QEvt const *e) {
     (void)e; // Suppress unused parameter warning
 
     me->queue = 0;
+    me->andar_atual = 1;
 
     QActive_subscribe((QActive *)me, OPEN_SIG);  
     QActive_subscribe((QActive *)me, CLOSE_SIG);
@@ -127,7 +128,9 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
             break;
         }
         case ANDAR_SIG: {
-            printf("Parado: Elevador passou pelo andar %d\n", andar);
+            int direc = direcao_fila(fila, me->andar_atual);
+            printf("Parado: Elevador passou pelo andar %d, com sentido %d\n", andar, direc);
+
             BSP_atualiza_display(andar);
             status = Q_HANDLED();
             break;
@@ -192,7 +195,9 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
             break;
         }
         case ANDAR_SIG: {
-            printf("Movimento: Elevador passou pelo andar %d\n", andar);
+            int direc = direcao_fila(fila, me->andar_atual);
+            printf("Movimento: Elevador passou pelo andar %d, com sentido %d\n", andar, direc);
+
             BSP_atualiza_display(andar);
             status = Q_HANDLED();
             break;

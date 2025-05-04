@@ -310,27 +310,6 @@ void QS_onCommand(uint8_t cmdId,
 }
 #endif
 
-void BSP_porta(int andar, int modo) {
-    int slen = sizeof(si_other);
-    int siglen;
-    char buffer[50];
-    if (s != -1) {
-        if (modo == 1) {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d+1", andar);
-        }
-        else if (modo == 0) {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d00", andar);
-        }
-        else {
-            snprintf(buffer, sizeof(buffer), "acionaporta%d-1", andar);
-        }
-        printf("ENVIADO: %s\n", buffer);
-        siglen = strlen(buffer);
-        if (sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen) == -1) {
-            perror("Error sending data with sendto");
-        }
-    }
-}
 
 
 void print_fila(uint8_t fila[]) {
@@ -376,6 +355,39 @@ void atualiza_fila(uint8_t fila[]) {
     print_fila(fila);
 }
 
+
+int direcao_fila(uint8_t fila[], int andar_atual) {
+    if (fila[0] > andar_atual) {
+        return 1; // Sobe
+    } else if (fila[0] < andar_atual) {
+        return -1; // Desce
+    }
+    
+    return 0; // Parado
+}
+
+
+void BSP_porta(int andar, int modo) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        if (modo == 1) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d+1", andar);
+        }
+        else if (modo == 0) {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d00", andar);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "acionaporta%d-1", andar);
+        }
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        if (sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen) == -1) {
+            perror("Error sending data with sendto");
+        }
+    }
+}
 
 
 void BSP_atualiza_display(int id) {
