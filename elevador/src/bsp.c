@@ -325,12 +325,24 @@ void print_fila(uint8_t fila[]) {
 }
 
 
-void append_fila(uint8_t fila[], uint8_t novo_andar) {
+void append_fila(uint8_t fila[], uint8_t novo_andar, int dir) {
     int length = len_fila;
     int i = 0;
     for (i = 0; i < length; i++) {
+        if (dir == 0){ // Se for para descer, uma ocorrencia do andar ja basta
+            if (fila[i] == novo_andar){
+                break;
+            }
+        }
         if (fila[i] == 0) {
             if (i>0 && fila[i-1] == novo_andar){
+                break;
+            }
+            if ((i>1) && (fila[i-2]<novo_andar) && (novo_andar<fila[i-1]) && ((fila[i-1]-fila[i-2])*dir>-1)){
+                // Se o elevador passa pelo novo_andar no caminho, em mesmo sentido do passageiro, adicionar parada intermediaria
+                // Se o sentido for 0, o passageiro vai desembarcar do elevador
+                fila[i] = fila[i-1];
+                fila[i-1] = novo_andar;
                 break;
             }
             fila[i] = novo_andar;
@@ -362,8 +374,21 @@ int direcao_fila(uint8_t fila[], int andar_atual) {
     } else if (fila[0] < andar_atual) {
         return -1; // Desce
     }
-    
-    return 0; // Parado
+    else {
+        return 0; // Parado
+    }
+}
+
+
+int direcao_a_para_b(int a, int b) {
+    if (a < b) {
+        return 1; // Sobe
+    } else if (a > b) {
+        return -1; // Desce
+    }
+    else {
+        return 0; // Parado
+    }
 }
 
 
@@ -416,31 +441,33 @@ void BSP_ir_para_andar(int id) {
 }
 
 
-void BSP_botao_sobe(int id) {
+void BSP_luz_botao_cabine(int andar, int modo) {
     int slen = sizeof(si_other);
     int siglen;
     char buffer[50];
     if (s != -1) {
-        snprintf(buffer, sizeof(buffer), "elevadorsobeon%d", id);
+        if (modo == 1) {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineon%d", andar);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadorcabineoff%d", andar);
+        }
         printf("ENVIADO: %s\n", buffer);
         siglen = strlen(buffer);
         sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
     }
 }
 
-void BSP_botao_desce(int id) {
-    int slen = sizeof(si_other);
-    int siglen;
-    char buffer[50];
-    if (s != -1) {
-        snprintf(buffer, sizeof(buffer), "elevadordesceon%d", id);
-        printf("ENVIADO: %s\n", buffer);
-        siglen = strlen(buffer);
-        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
-    }
-}
 
-void BSP_porta_abriu(int id, int direcao) {
+void BSP_desliga_botao_andar(uint8_t fila[], int id) {
+    int direcao;
+    if (fila[0] == 0) {
+        direcao = 0;
+    }
+    else{
+        direcao = direcao_a_para_b(id, fila[0]);
+    }
+
     int slen = sizeof(si_other);
     int siglen;
     char buffer[50];
@@ -448,8 +475,37 @@ void BSP_porta_abriu(int id, int direcao) {
         if (direcao == 1) {
             snprintf(buffer, sizeof(buffer), "elevadorsobeoff%d", id);
         }
-        else {
+        else if (direcao == -1){
             snprintf(buffer, sizeof(buffer), "elevadordesceoff%d", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadorsobeoff%d", id);
+            printf("ENVIADO: %s\n", buffer);
+            siglen = strlen(buffer);
+            sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+
+            snprintf(buffer, sizeof(buffer), "elevadordesceoff%d", id);
+            printf("ENVIADO: %s\n", buffer);
+            siglen = strlen(buffer);
+            sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+        }
+        printf("ENVIADO: %s\n", buffer);
+        siglen = strlen(buffer);
+        sendto(s, buffer, siglen, 0, (struct sockaddr *)&si_other, slen);
+    }
+}
+
+
+void BSP_liga_botao_andar(int id, int direcao) {
+    int slen = sizeof(si_other);
+    int siglen;
+    char buffer[50];
+    if (s != -1) {
+        if (direcao == 1) {
+            snprintf(buffer, sizeof(buffer), "elevadorsobeon%d", id);
+        }
+        else {
+            snprintf(buffer, sizeof(buffer), "elevadordesceon%d", id);
         }
         printf("ENVIADO: %s\n", buffer);
         siglen = strlen(buffer);

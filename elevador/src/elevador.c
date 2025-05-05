@@ -16,8 +16,6 @@ typedef struct TElevadorTag {
     int andar_atual;
 } TElevador;
 
-
-
 static TElevador l_TElevador;
 
 static QState TElevador_inicial(TElevador * const me, QEvt const *e);
@@ -34,8 +32,8 @@ void TElevador_actor() {
 }
 
 
-static QState append_and_call(TElevador * const me, uint8_t fila[], uint8_t andar) {
-    append_fila(fila, andar);
+static QState append_and_call(TElevador * const me, uint8_t fila[], uint8_t andar, int direc) {
+    append_fila(fila, andar, direc);
     if (me->queue == 0) {
         me->queue = 1;
         return Q_TRAN(&TElevador_movimento);
@@ -93,6 +91,7 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
         }
         case PARADO_SIG: {
             printf("Parado: Elevador parado no andar %d\n", andar);
+            BSP_luz_botao_cabine(andar, -1);
             status = Q_HANDLED();
             break;
         }
@@ -103,17 +102,20 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
         }
         case CABINE_SIG: {
             printf("Parado: Cabine acionada %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            BSP_luz_botao_cabine(andar, 1);
+            status = append_and_call(me, fila, andar, 0); // Add the current floor to the queue
             break;
         }
         case SOBE_BOTAO_SIG: { 
             printf("Parado: Acionando botao sobe %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            BSP_liga_botao_andar(andar, 1);
+            status = append_and_call(me, fila, andar, 1);
             break;  
         }
         case DESCE_BOTAO_SIG: {
             printf("Parado: Acionando botao desce %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            BSP_liga_botao_andar(andar, -1);
+            status = append_and_call(me, fila, andar, -1);
             break;  
         }
         case CLOSE_SIG: {
@@ -123,6 +125,7 @@ QState TElevador_parado(TElevador * const me, QEvt const * const e) {
         case PORTA_ABRIU_SIG: {
             printf("Parado: Porta do elevador %d terminou de abrir\n", andar);
             
+            me->andar_atual = andar;
             printf("Parado -> Espera\n");
             status = Q_TRAN(&TElevador_espera);
             break;
@@ -164,7 +167,7 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
         }
         case Q_ENTRY_SIG: {
             printf("Entry: Movimento\n");
-            BSP_porta(andar, +1); // Close the door while moving
+            BSP_porta(me->andar_atual, +1);
             status = Q_HANDLED();
             break;
         }
@@ -179,6 +182,7 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
                 else { // Andar destino igual ao atual
                     printf("Movimento -> Parado\n");
                     BSP_atualiza_display(andar);
+                    BSP_luz_botao_cabine(andar, -1);
                     BSP_porta(andar, -1);
 
                     me->andar_atual = fila[0];
@@ -204,27 +208,30 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
         }
         case CABINE_SIG: {
             printf("Movimento: Cabine acionada %d\n", andar);
-            append_fila(fila, andar); // Add the current floor to the queue
-            status = Q_HANDLED();
+            BSP_luz_botao_cabine(andar, 1);
+            status = append_and_call(me, fila, andar, 0); // Add the current floor to the queue
             break;
         }
         case PARADO_SIG: {
             printf("Movimento -> Parado\n");
             BSP_atualiza_display(andar);
             BSP_porta(andar, -1);
-
+            BSP_luz_botao_cabine(andar, -1);
+            
             me->andar_atual = fila[0];
             atualiza_fila(fila);
+
+            BSP_desliga_botao_andar(fila, andar);
 
             status = Q_TRAN(&TElevador_parado);
             break;    
         }
-        case OPEN_SIG: { // Request to open door (ignored while moving)
-            status = Q_HANDLED(); // Ignore door open requests while moving
+        case OPEN_SIG: {
+            status = Q_HANDLED();
             break;
         }
-        case CLOSE_SIG: { // Request to close door
-            status = Q_HANDLED(); // Door already closed in movement state
+        case CLOSE_SIG: {
+            status = Q_HANDLED();
             break;
         }
         case TIMEOUT_SIG: {
@@ -238,13 +245,15 @@ QState TElevador_movimento(TElevador * const me, QEvt const * const e) {
             break;
         }
         case SOBE_BOTAO_SIG: { 
-            printf("Parado: Acionando botao sobe %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            printf("Movimento: Acionando botao sobe %d\n", andar);
+            BSP_liga_botao_andar(andar, 1);
+            status = append_and_call(me, fila, andar, 1);
             break;  
         }
         case DESCE_BOTAO_SIG: {
-            printf("Parado: Acionando botao desce %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            printf("Movimento: Acionando botao desce %d\n", andar);
+            BSP_liga_botao_andar(andar, -1);
+            status = append_and_call(me, fila, andar, -1);
             break;  
         }
         case Q_EXIT_SIG: {
@@ -288,18 +297,20 @@ static QState TElevador_espera(TElevador * const me, QEvt const * const e) {
         }
         case CABINE_SIG : {
             printf("Espera: Cabine acionada %d\n", andar);
-            append_fila(fila, andar); // Add the current floor to the queue
-            status = Q_HANDLED();
+            BSP_luz_botao_cabine(andar, 1);
+            status = append_and_call(me, fila, andar, 0);
             break;
         }
         case SOBE_BOTAO_SIG: { 
-            printf("Parado: Acionando botao sobe %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            printf("Espera: Acionando botao sobe %d\n", andar);
+            BSP_liga_botao_andar(andar, 1);
+            status = append_and_call(me, fila, andar, 1);
             break;  
         }
         case DESCE_BOTAO_SIG: {
-            printf("Parado: Acionando botao desce %d\n", andar);
-            status = append_and_call(me, fila, andar); // Add the current floor to the queue
+            printf("Espera: Acionando botao desce %d\n", andar);
+            BSP_liga_botao_andar(andar, -1);
+            status = append_and_call(me, fila, andar, -1);
             break;  
         }
         case Q_EXIT_SIG: {

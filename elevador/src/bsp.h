@@ -55,17 +55,18 @@ void bsp_on();
 void bsp_off();
 
 void print_fila(uint8_t fila[]);
-void append_fila(uint8_t fila[], uint8_t novo_andar);
+void append_fila(uint8_t fila[], uint8_t novo_andar, int direcao);
 void atualiza_fila(uint8_t fila[]);
 int direcao_fila(uint8_t fila[], int andar_atual);
+int direcao_a_para_b(int a, int b);
 
 void BSP_porta(int id, int direcao);
 void BSP_andar(int id);
 void BSP_ir_para_andar(int id);
 void BSP_atualiza_display(int id);
-void BSP_botao_sobe(int id);
-void BSP_botao_desce(int id);
-void BSP_porta_abriu(int id, int direcao);
+void BSP_liga_botao_andar(int id, int direcao);
+void BSP_desliga_botao_andar(uint8_t fila[], int id);
+void BSP_luz_botao_cabine(int andar, int modo);
 
 void sendUDP(int comando);
 #endif // BSP_H_
