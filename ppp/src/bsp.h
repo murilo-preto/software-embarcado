@@ -35,6 +35,7 @@
 #define BSP_H_
 
 #include <stdint.h> 
+#include <sinais.h>
 
 
 #define BSP_TICKS_PER_SEC     100u
@@ -53,7 +54,7 @@ uint32_t BSP_random(void);          // pseudo-random generator
 
 void bsp_on();
 void bsp_off();
-// void BSP_send_configure_request(QActive *Point)
+PPP_Configuration BSP_decode_configure_request(const uint8_t *frame, size_t length);
 
 void BSP_porta(int id, int direcao);
 void BSP_andar(int id);

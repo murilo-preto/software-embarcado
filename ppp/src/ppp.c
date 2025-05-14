@@ -115,11 +115,15 @@ QState S_LISTENING(Point * const me, QEvt const * const e) {
         case ACK_RECEIVED_SIG: {
             printf(" S_LISTENING: ACK_RECEIVED_SIG \n");
             print_hex_string(((MicroEvt *)e)->data);
-            BSP_decode_configure_request(((MicroEvt *)e)->data, ((MicroEvt *)e)->size);
+            PPP_Configuration config = BSP_decode_configure_request(((MicroEvt *)e)->data, ((MicroEvt *)e)->size);
+            if (PPP_is_config_match(&me->config, &config)) {
+                printf("Config accepted\n");
+                status = Q_TRAN(S_ACK_REC);
+            } else {
+                printf("Condig denied\n");
+                status = Q_HANDLED();
+            }            
 
-            
-
-            status = Q_TRAN(S_ACK_REC);
             break;
         }
         case CLOSE_SIG: {

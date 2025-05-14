@@ -165,11 +165,11 @@ void BSP_send_configure_request(QActive *Point) {
 }
 
 //=== Função para decodificar um frame PPP Configure-Request recebido ===
-void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
+PPP_Configuration BSP_decode_configure_request(const uint8_t *frame, size_t length) {
     // Valida flags
     if (length < 2 || frame[0] != FLAG || frame[length - 1] != FLAG) {
         printf("Invalid frame: missing flags\n");
-        return;
+        return (PPP_Configuration){0};  // Retorna configuração vazia
     }
     // Remove flags para processamento
     size_t stuffed_len = length - 2;
@@ -189,7 +189,7 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
     // Verifica comprimento mínimo (Address, Control, Protocol, Code, ID, Length, FCS)
     if (raw_len < 4 + 4 + 2) {
         printf("Frame too short\n");
-        return;
+        return (PPP_Configuration){0};  // Retorna configuração vazia
     }
 
     // Extrai header PPP
@@ -209,8 +209,13 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
     uint16_t calc_fcs = crc16_ccitt(raw, raw_len - 2);
     if (recv_fcs != calc_fcs) {
         printf("FCS mismatch: recv=0x%04X, calc=0x%04X\n", recv_fcs, calc_fcs);
-        return;
+        return (PPP_Configuration){0};  // Retorna configuração vazia
     }
+
+    PPP_Configuration config;
+    config.code = code;
+    config.id = identifier;
+    config.length = len;
 
     // Itera sobre as opções LCP
     size_t opt_idx = 8;        // Início das opções após Code/ID/Length
@@ -225,37 +230,37 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
         printf("Option Type=%u, Length=%u", type, o_len);
         switch (type) {
             case 1: {  // MRU
-                uint16_t mru = (raw[opt_idx + 2] << 8) | raw[opt_idx + 3];
-                printf(", MRU=%u\n", mru);
+                config.MRU = (raw[opt_idx + 2] << 8) | raw[opt_idx + 3];
+                printf(", MRU=%u\n", config.MRU);
                 break;
             }
             case 2: {  // ACCM
-                uint32_t accm = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
-                printf(", ACCM=0x%08X\n", accm);
+                config.ACCM = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
+                printf(", ACCM=0x%08X\n", config.ACCM);
                 break;
             }
             case 3: {  // Auth-Prot
-                int auth_enabled = 0;
+                config.auth_prot = 0;
                 printf(", none\n");
                 break;
             }
             case 4: {  // Quality-Prot
-                int quality_enabled = 0;
+                config.quality_prot = 0;
                 printf(", none\n");
                 break;
             }
             case 5: {  // Magic Number
-                uint32_t magic = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
-                printf(", Magic=0x%08X\n", magic);
+                config.magic_number = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
+                printf(", Magic=0x%08X\n", config.magic_number);
                 break;
             }
             case 7: {  // Prot-Field-Comp
-                int prot_field_comp_enabled = 1;
+                config.protocol_field_comp = 1;
                 printf(", enabled\n");
                 break;
             }
             case 8: {  // Addr-Control-Comp
-                int addr_ctrl_comp_enabled = 1;
+                config.addr_control_comp = 1;
                 printf(", enabled\n");
                 break;
             }
@@ -267,6 +272,7 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
         opt_idx += o_len;
     }
 
+    return config;
 }
 
 #ifdef Q_SPY
