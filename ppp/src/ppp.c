@@ -128,9 +128,9 @@ QState S_LISTENING(Point *const me, QEvt const *const e) {
 
             if (PPP_is_config_match(&me->config, &config)) {
                 printf("Config accepted\n");
- 
+
                 me->point_id = 'B';
-                printf("%c: LISTENING -> S_ACK_REC\n", me->point_id);               
+                printf("%c: LISTENING -> S_ACK_REC\n", me->point_id);
                 status = Q_TRAN(S_ACK_REC);
             } else {
                 printf("Condig denied\n");
@@ -172,8 +172,20 @@ QState S_REQ_SENT(Point *const me, QEvt const *const e) {
             printf("%c: S_REQ_SENT: DATA_SIG \n", me->point_id);
             char *data = ((MicroEvt *)e)->data;
             print_hex_string(data);
-            char* message = BSP_extract_ppp_payload((uint8_t *)data, ((MicroEvt *)e)->size);
+            char *message = BSP_extract_ppp_payload((uint8_t *)data, ((MicroEvt *)e)->size);
             printf("%c: Message received: %s\n", me->point_id, message);
+
+            if (strcmp(message, "ACK") == 0) {
+                printf("%c: Received ACK, confirming connection and opening\n", me->point_id);
+
+                BSP_send_ppp_data(PointB, "ACK");
+                printf("%c: ACK sent\n", me->point_id);
+
+                printf("%c: S_REQ_SENT -> S_OPENED\n", me->point_id);
+                status = Q_TRAN(S_OPENED);
+                break;
+            }
+
             status = Q_HANDLED();
             break;
         }
@@ -219,6 +231,23 @@ QState S_ACK_REC(Point *const me, QEvt const *const e) {
             status = Q_HANDLED();
             break;
         }
+        case DATA_SIG: {
+            printf("%c: S_ACK_REC: DATA_SIG \n", me->point_id);
+            char *data = ((MicroEvt *)e)->data;
+            print_hex_string(data);
+            char *message = BSP_extract_ppp_payload((uint8_t *)data, ((MicroEvt *)e)->size);
+            printf("%c: Message received: %s\n", me->point_id, message);
+
+            if (strcmp(message, "ACK") == 0) {
+                printf("%c: Received ACK, opening\n", me->point_id);
+                printf("%c: S_ACK_REC -> S_OPENED\n", me->point_id);
+                status = Q_TRAN(S_OPENED);
+                break;
+            }
+
+            status = Q_HANDLED();
+            break;
+        }
         case OPEN_SIG: {
             printf("%c: S_ACK_REC: OPEN_SIG \n", me->point_id);
             status = Q_HANDLED();
@@ -239,13 +268,26 @@ QState S_ACK_REC(Point *const me, QEvt const *const e) {
 }
 
 /*..........................................................................*/
-/* State: Elevator door is open */
 static QState S_ACK_SENT(Point *const me, QEvt const *const e) {
     QState status;
 
     switch (e->sig) {
         default: {
             printf("Unhandled signal in S_ACK_SENT: %d\n", e->sig);
+            status = Q_SUPER(&QHsm_top);
+            break;
+        }
+    }
+    return status;
+}
+
+/*..........................................................................*/
+static QState S_OPENED(Point *const me, QEvt const *const e) {
+    QState status;
+
+    switch (e->sig) {
+        default: {
+            printf("%c: S_OPENED: Unhandled signal: %d\n", me->point_id,e->sig);
             status = Q_SUPER(&QHsm_top);
             break;
         }
