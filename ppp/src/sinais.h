@@ -1,6 +1,10 @@
+#include "qp_port.h"
+
 #ifndef SINAIS_H_
 #define SINAIS_H_
-#include "qp_port.h"
+#define MAX_PUB_SIG TERMINATE_SIG+1
+#define QUEUESIZE ((uint8_t)10)
+#define POOLSIZE ((uint8_t)5)
 
 enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
@@ -11,13 +15,6 @@ enum SinaisElevador {
     TERMINATE_SIG,
 	MAX_SIG
 };
-
-#define MAX_PUB_SIG TERMINATE_SIG+1
-
-// #define QUEUESIZE ((uint8_t)5)
-#define QUEUESIZE ((uint8_t)10)
-
-#define POOLSIZE ((uint8_t)5)
 
 typedef struct MicroEvtTag {
     QEvt super;
@@ -41,7 +38,6 @@ typedef struct {
 
 extern QActive * const PointA;
 extern QActive * const PointB;
-
 extern QActive * const AO_tmicro;
 extern void Point_actor();
 

@@ -81,7 +81,6 @@ void *udpServer() {
 #define PROTOCOL_LCP_L 0x21  // Byte baixo do protocolo LCP
 #define MAX_FRAME_SIZE 256   // Tamanho máximo do frame (arbitrário)
 
-
 //=== Função para calcular CRC-16-CCITT (polinômio 0x1021, inicializado em 0xFFFF) ===
 static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;
@@ -116,6 +115,7 @@ static size_t apply_byte_stuffing(const uint8_t *input, size_t in_len, uint8_t *
 
 //=== Função principal para construir e enviar um pacote Configure-Request PPP ===
 void BSP_send_configure_request(QActive *Point) {
+    printf("-------------Encoding PPP Configure-Request-------------\n");
     // Payload LCP: Code, Identifier, Length + 7 opções
     uint8_t payload[] = {
         0x01, 0x01, 0x00, 0x20,              // Code=1, ID=1, Length=32 bytes (0x20)
@@ -155,6 +155,12 @@ void BSP_send_configure_request(QActive *Point) {
     pos += stuffed_len;
     final_frame[pos++] = FLAG;  // Flag final
 
+    printf("PPP Configure-Request frame to send (hex): ");
+    for (size_t i = 0; i < pos; ++i) {
+        printf("%02X ", final_frame[i]);
+    }
+    printf("\n");
+
     MicroEvt *evt = Q_NEW(MicroEvt, ACK_RECEIVED_SIG);
     if (evt && final_frame) {
         strncpy(evt->data, (const char *)final_frame, pos);
@@ -162,6 +168,7 @@ void BSP_send_configure_request(QActive *Point) {
         evt->size = (int)pos;
     }
     QACTIVE_POST(Point, &evt->super, NULL);
+    printf("--------------------------------------------------------\n");
 }
 
 //=== Função para decodificar um frame PPP Configure-Request recebido ===
@@ -275,6 +282,104 @@ PPP_Configuration BSP_decode_configure_request(const uint8_t *frame, size_t leng
 
     printf("--------------------------------------------------------\n");
     return config;
+}
+
+//=== Função para enviar dados genéricos via PPP para um destino (Point) ===
+void BSP_send_ppp_data(QActive *Point, const char *data_str) {
+    printf("-------------Encoding PPP Data Frame-------------\n");
+
+    const uint8_t PROTOCOL_DATA_H = 0x00;
+    const uint8_t PROTOCOL_DATA_L = 0x21;
+
+    size_t data_len = strlen(data_str);
+    if (data_len > MAX_FRAME_SIZE - 10) {
+        printf("Data too large for PPP frame\n");
+        return;
+    }
+
+    uint8_t frame_raw[MAX_FRAME_SIZE];
+    size_t idx = 0;
+    frame_raw[idx++] = ADDRESS;
+    frame_raw[idx++] = CONTROL;
+    frame_raw[idx++] = PROTOCOL_DATA_H;
+    frame_raw[idx++] = PROTOCOL_DATA_L;
+    memcpy(&frame_raw[idx], data_str, data_len);
+    idx += data_len;
+
+    uint16_t fcs = crc16_ccitt(frame_raw, idx);
+    frame_raw[idx++] = (uint8_t)(fcs & 0xFF);
+    frame_raw[idx++] = (uint8_t)((fcs >> 8) & 0xFF);
+
+    uint8_t stuffed[MAX_FRAME_SIZE * 2];
+    size_t stuffed_len = apply_byte_stuffing(frame_raw, idx, stuffed);
+
+    static uint8_t final_frame[MAX_FRAME_SIZE * 2 + 2];
+    size_t pos = 0;
+    final_frame[pos++] = FLAG;
+    memcpy(&final_frame[pos], stuffed, stuffed_len);
+    pos += stuffed_len;
+    final_frame[pos++] = FLAG;
+
+    printf("PPP Data frame to send (hex): ");
+    for (size_t i = 0; i < pos; ++i) {
+        printf("%02X ", final_frame[i]);
+    }
+    printf("\n");
+
+    MicroEvt *evt = Q_NEW(MicroEvt, DATA_SIG);
+    if (evt) {
+        strncpy(evt->data, (const char *)final_frame, pos);
+        evt->data[pos] = '\0';
+        evt->size = (int)pos;
+        QACTIVE_POST(Point, &evt->super, NULL);
+    }
+    printf("------------------------------------------------------\n");
+}
+
+//=== Função para extrair string de dados de um frame PPP ===
+char* BSP_extract_ppp_payload(const uint8_t *frame, size_t length) {
+    static char output[MAX_FRAME_SIZE];
+
+    if (length < 6 || frame[0] != FLAG || frame[length - 1] != FLAG) {
+        printf("Invalid frame\n");
+        output[0] = '\0';
+        return output;
+    }
+
+    const uint8_t *stuffed = frame + 1;
+    size_t stuffed_len = length - 2;
+
+    uint8_t raw[MAX_FRAME_SIZE];
+    size_t raw_len = 0;
+    for (size_t i = 0; i < stuffed_len; ++i) {
+        if (stuffed[i] == 0x7D && i + 1 < stuffed_len) {
+            raw[raw_len++] = stuffed[++i] ^ 0x20;
+        } else {
+            raw[raw_len++] = stuffed[i];
+        }
+    }
+
+    if (raw_len < 6) {
+        printf("Frame too short after unstuffing\n");
+        output[0] = '\0';
+        return output;
+    }
+
+    uint16_t recv_fcs = raw[raw_len - 2] | (raw[raw_len - 1] << 8);
+    uint16_t calc_fcs = crc16_ccitt(raw, raw_len - 2);
+    if (recv_fcs != calc_fcs) {
+        printf("FCS error\n");
+        output[0] = '\0';
+        return output;
+    }
+
+    size_t header_len = 4;
+    size_t payload_len = raw_len - header_len - 2;
+    if (payload_len >= MAX_FRAME_SIZE) payload_len = MAX_FRAME_SIZE - 1;
+
+    memcpy(output, &raw[header_len], payload_len);
+    output[payload_len] = '\0';
+    return output;
 }
 
 #ifdef Q_SPY
