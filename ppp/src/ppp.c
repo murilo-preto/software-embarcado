@@ -1,37 +1,37 @@
-#include "sinais.h"
-#include "bsp.h"
 #include <stdio.h>
+
+#include "bsp.h"
+#include "sinais.h"
 
 void TElevador_display(int andar);
 #define UM_SEG (QTimeEvtCtr)(BSP_TICKS_PER_SEC)
 
 enum InternalSignals {
-    TIMEOUT_SIG = MAX_SIG 
+    TIMEOUT_SIG = MAX_SIG
 };
 
-
 typedef struct PointTag {
-    QActive super;       
+    QActive super;
     int id;
-    QTimeEvt timeEvt;    
-    PPP_Configuration config; 
+    QTimeEvt timeEvt;
+    PPP_Configuration config;
+    char point_id;
 } Point;
-
 
 static Point l_PointA, l_PointB;
 
-QActive * const PointA = (QActive *)&l_PointA;
-QActive * const PointB = (QActive *)&l_PointB;
+QActive *const PointA = (QActive *)&l_PointA;
+QActive *const PointB = (QActive *)&l_PointB;
 
-static QState S_STARTING(Point * const me, QEvt const *e);
-static QState S_LISTENING(Point * const me, QEvt const *e);
-static QState S_REQ_SENT(Point * const me, QEvt const * const e);
-static QState S_ACK_REC(Point * const me, QEvt const * const e);
-static QState S_ACK_SENT(Point * const me, QEvt const * const e);
-static QState S_OPENED(Point * const me, QEvt const * const e);
+static QState S_STARTING(Point *const me, QEvt const *e);
+static QState S_LISTENING(Point *const me, QEvt const *e);
+static QState S_REQ_SENT(Point *const me, QEvt const *const e);
+static QState S_ACK_REC(Point *const me, QEvt const *const e);
+static QState S_ACK_SENT(Point *const me, QEvt const *const e);
+static QState S_OPENED(Point *const me, QEvt const *const e);
 
 void print_hex_string(const char *hex_str) {
-    for (size_t i = 0; hex_str[i] && hex_str[i+1]; i += 2) {
+    for (size_t i = 0; hex_str[i] && hex_str[i + 1]; i += 2) {
         unsigned int byte;
         sscanf(&hex_str[i], "%2x", &byte);
         printf("%02X ", byte);
@@ -58,11 +58,16 @@ bool PPP_is_config_match(const PPP_Configuration *configA, const PPP_Configurati
 }
 
 void Point_actor(int id) {
-    Point * me;
-    switch(id) {
-        case 1: me = &l_PointA; break;
-        case 2: me = &l_PointB; break;
-        default: return;
+    Point *me;
+    switch (id) {
+        case 1:
+            me = &l_PointA;
+            break;
+        case 2:
+            me = &l_PointB;
+            break;
+        default:
+            return;
     }
     me->id = id;
     QActive_ctor(&me->super, Q_STATE_CAST(&S_STARTING));
@@ -70,8 +75,8 @@ void Point_actor(int id) {
 }
 
 /* Initial state of the point */
-QState S_STARTING(Point * const me, QEvt const *e) {
-    (void)e; // Suppress unused parameter warning
+QState S_STARTING(Point *const me, QEvt const *e) {
+    (void)e;  // Suppress unused parameter warning
 
     me->config.code = 1;
     me->config.id = 1;
@@ -86,9 +91,9 @@ QState S_STARTING(Point * const me, QEvt const *e) {
 
     // Subscribe to relevant signals
     QActive_subscribe((QActive *)me, TIME_TICK_SIG);
-    QActive_subscribe((QActive *)me, OPEN_SIG);  
-    QActive_subscribe((QActive *)me, CLOSE_SIG); 
-    QActive_subscribe((QActive *)me, DATA_SIG); 
+    QActive_subscribe((QActive *)me, OPEN_SIG);
+    QActive_subscribe((QActive *)me, CLOSE_SIG);
+    QActive_subscribe((QActive *)me, DATA_SIG);
 
     // Arm the time event for periodic signals
     QTimeEvt_armX(&me->timeEvt, UM_SEG, 0);
@@ -97,9 +102,9 @@ QState S_STARTING(Point * const me, QEvt const *e) {
 
 /*..........................................................................*/
 /* State: Listening */
-QState S_LISTENING(Point * const me, QEvt const * const e) {
-    QState status = Q_HANDLED(); // Default to handled state
-    
+QState S_LISTENING(Point *const me, QEvt const *const e) {
+    QState status = Q_HANDLED();  // Default to handled state
+
     switch (e->sig) {
         case Q_ENTRY_SIG: {
             printf(" S_LISTENING: ENTRY_SIG \n");
@@ -109,20 +114,26 @@ QState S_LISTENING(Point * const me, QEvt const * const e) {
         case OPEN_SIG: {
             printf(" S_LISTENING: OPEN_SIG \n");
             BSP_send_configure_request(PointB);
+
+            me->point_id = 'A';
+            printf("%c: LISTENING -> S_REQ_SENT\n", me->point_id);
             status = Q_TRAN(S_REQ_SENT);
             break;
         }
         case ACK_RECEIVED_SIG: {
             printf(" S_LISTENING: ACK_RECEIVED_SIG \n");
-            print_hex_string(((MicroEvt *)e)->data);
             PPP_Configuration config = BSP_decode_configure_request(((MicroEvt *)e)->data, ((MicroEvt *)e)->size);
+
             if (PPP_is_config_match(&me->config, &config)) {
                 printf("Config accepted\n");
+ 
+                me->point_id = 'B';
+                printf("%c: LISTENING -> S_ACK_REC\n", me->point_id);               
                 status = Q_TRAN(S_ACK_REC);
             } else {
                 printf("Condig denied\n");
                 status = Q_HANDLED();
-            }            
+            }
 
             break;
         }
@@ -133,35 +144,32 @@ QState S_LISTENING(Point * const me, QEvt const * const e) {
         }
         default: {
             printf(" S_LISTENING: Unhandled signal %d\n", e->sig);
-            status = Q_SUPER(&QHsm_top); 
+            status = Q_SUPER(&QHsm_top);
             break;
         }
     }
     return status;
 }
 
-
 /*..........................................................................*/
 /* State: Elevator is stopped */
-QState S_REQ_SENT(Point * const me, QEvt const * const e) {
-    QState status = Q_HANDLED(); // Default to handled state
+QState S_REQ_SENT(Point *const me, QEvt const *const e) {
+    QState status = Q_HANDLED();  // Default to handled state
 
     switch (e->sig) {
         case OPEN_SIG: {
-            MicroEvt *evt = (MicroEvt *)e;
-            if (evt->elevador_id == me->id) { // Verifique o ID
-                printf("Abrindo porta %d\n", me->id);
-                BSP_porta(me->id, 0);
-                status = Q_HANDLED();
-            }
+            printf(" S_REQ_SENT: OPEN_SIG \n");
+            status = Q_HANDLED();
             break;
         }
-        case CLOSE_SIG: { // Request to close door
+        case CLOSE_SIG: {
+            printf(" S_REQ_SENT: CLOSE_SIG \n");
             status = Q_HANDLED();
             break;
         }
         default: {
-            status = Q_SUPER(&QHsm_top); 
+            printf(" S_REQ_SENT: Unhandled signal %d\n", e->sig);
+            status = Q_SUPER(&QHsm_top);
             break;
         }
     }
@@ -170,20 +178,28 @@ QState S_REQ_SENT(Point * const me, QEvt const * const e) {
 
 /*..........................................................................*/
 /* State: Elevator is moving */
-QState S_ACK_REC(Point * const me, QEvt const * const e) {
+QState S_ACK_REC(Point *const me, QEvt const *const e) {
     QState status;
 
     switch (e->sig) {
-        case OPEN_SIG: { 
-            status = Q_HANDLED(); 
+        case Q_ENTRY_SIG: {
+            printf(" S_ACK_REC: ENTRY_SIG \n");
+            status = Q_HANDLED();
             break;
         }
-        case CLOSE_SIG: { 
+        case OPEN_SIG: {
+            printf(" S_ACK_REC: OPEN_SIG \n");
+            status = Q_HANDLED();
+            break;
+        }
+        case CLOSE_SIG: {
+            printf(" S_ACK_REC: CLOSE_SIG \n");
             status = Q_HANDLED();
             break;
         }
         default: {
-            status = Q_SUPER(&QHsm_top); 
+            printf(" S_ACK_REC: Unhandled signal %d\n", e->sig);
+            status = Q_SUPER(&QHsm_top);
             break;
         }
     }
@@ -192,13 +208,13 @@ QState S_ACK_REC(Point * const me, QEvt const * const e) {
 
 /*..........................................................................*/
 /* State: Elevator door is open */
-static QState S_ACK_SENT(Point * const me, QEvt const * const e) {
+static QState S_ACK_SENT(Point *const me, QEvt const *const e) {
     QState status;
 
     switch (e->sig) {
         default: {
             printf("Unhandled signal in S_ACK_SENT: %d\n", e->sig);
-            status = Q_SUPER(&QHsm_top); // Pass unhandled signals to the top state
+            status = Q_SUPER(&QHsm_top);
             break;
         }
     }

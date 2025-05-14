@@ -166,6 +166,7 @@ void BSP_send_configure_request(QActive *Point) {
 
 //=== Função para decodificar um frame PPP Configure-Request recebido ===
 PPP_Configuration BSP_decode_configure_request(const uint8_t *frame, size_t length) {
+    printf("-------------Decoding PPP Configure-Request-------------\n");
     // Valida flags
     if (length < 2 || frame[0] != FLAG || frame[length - 1] != FLAG) {
         printf("Invalid frame: missing flags\n");
@@ -272,6 +273,7 @@ PPP_Configuration BSP_decode_configure_request(const uint8_t *frame, size_t leng
         opt_idx += o_len;
     }
 
+    printf("--------------------------------------------------------\n");
     return config;
 }
 
