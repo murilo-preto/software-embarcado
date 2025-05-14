@@ -26,6 +26,19 @@ typedef struct MicroEvtTag {
     int size;
 } MicroEvt;
 
+typedef struct {
+    int code;
+    int id;
+    int length;
+    int MRU;
+    int ACCM;
+    int auth_prot;
+    int quality_prot;
+    int magic_number;
+    int protocol_field_comp;
+    int addr_control_comp;
+} PPP_Configuration;
+
 extern QActive * const PointA;
 extern QActive * const PointB;
 

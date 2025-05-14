@@ -2,7 +2,6 @@
 #include "bsp.h"
 #include <stdio.h>
 
-
 void TElevador_display(int andar);
 #define UM_SEG (QTimeEvtCtr)(BSP_TICKS_PER_SEC)
 
@@ -15,7 +14,9 @@ typedef struct PointTag {
     QActive super;       
     int id;
     QTimeEvt timeEvt;    
+    PPP_Configuration config; 
 } Point;
+
 
 static Point l_PointA, l_PointB;
 
@@ -38,6 +39,24 @@ void print_hex_string(const char *hex_str) {
     printf("\n");
 }
 
+// Compare all fields of the PPP_Configuration struct
+bool PPP_is_config_match(const PPP_Configuration *configA, const PPP_Configuration *configB) {
+    if (configA == NULL || configB == NULL) {
+        return false;
+    }
+
+    return (configA->code == configB->code) &&
+           (configA->id == configB->id) &&
+           (configA->length == configB->length) &&
+           (configA->MRU == configB->MRU) &&
+           (configA->ACCM == configB->ACCM) &&
+           (configA->auth_prot == configB->auth_prot) &&
+           (configA->quality_prot == configB->quality_prot) &&
+           (configA->magic_number == configB->magic_number) &&
+           (configA->protocol_field_comp == configB->protocol_field_comp) &&
+           (configA->addr_control_comp == configB->addr_control_comp);
+}
+
 void Point_actor(int id) {
     Point * me;
     switch(id) {
@@ -53,6 +72,17 @@ void Point_actor(int id) {
 /* Initial state of the point */
 QState S_STARTING(Point * const me, QEvt const *e) {
     (void)e; // Suppress unused parameter warning
+
+    me->config.code = 1;
+    me->config.id = 1;
+    me->config.length = 32;
+    me->config.MRU = 1500;
+    me->config.ACCM = 0xFFFFFFFF;
+    me->config.auth_prot = 0;
+    me->config.quality_prot = 0;
+    me->config.magic_number = 0x12345678;
+    me->config.protocol_field_comp = 1;
+    me->config.addr_control_comp = 1;
 
     // Subscribe to relevant signals
     QActive_subscribe((QActive *)me, TIME_TICK_SIG);
@@ -86,6 +116,9 @@ QState S_LISTENING(Point * const me, QEvt const * const e) {
             printf(" S_LISTENING: ACK_RECEIVED_SIG \n");
             print_hex_string(((MicroEvt *)e)->data);
             BSP_decode_configure_request(((MicroEvt *)e)->data, ((MicroEvt *)e)->size);
+
+            
+
             status = Q_TRAN(S_ACK_REC);
             break;
         }

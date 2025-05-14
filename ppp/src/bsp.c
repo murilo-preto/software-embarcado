@@ -81,6 +81,7 @@ void *udpServer() {
 #define PROTOCOL_LCP_L 0x21  // Byte baixo do protocolo LCP
 #define MAX_FRAME_SIZE 256   // Tamanho máximo do frame (arbitrário)
 
+
 //=== Função para calcular CRC-16-CCITT (polinômio 0x1021, inicializado em 0xFFFF) ===
 static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;
@@ -117,14 +118,14 @@ static size_t apply_byte_stuffing(const uint8_t *input, size_t in_len, uint8_t *
 void BSP_send_configure_request(QActive *Point) {
     // Payload LCP: Code, Identifier, Length + 7 opções
     uint8_t payload[] = {
-        0x01, 0x01, 0x00, 0x20,                      // Code=1, ID=1, Length=32 bytes (0x20)
-        0x01, 0x04, 0x05, 0xDC,                      // Option MRU: 1500 (0x05DC)
-        0x02, 0x06, 0xFF, 0xFF, 0xFF, 0xFF,          // Option ACCM: 0xFFFFFFFF
-        0x03, 0x04, 0x00, 0x00,                      // Option Auth-Prot: None
-        0x04, 0x04, 0x00, 0x00,                      // Option Quality-Prot: None
-        0x05, 0x06, 0x12, 0x34, 0x56, 0x78,          // Option Magic-Number: fixed example
-        0x07, 0x02,                                  // Option Prot-Field-Comp: enabled
-        0x08, 0x02                                   // Option Addr-Control-Comp: enabled
+        0x01, 0x01, 0x00, 0x20,              // Code=1, ID=1, Length=32 bytes (0x20)
+        0x01, 0x04, 0x05, 0xDC,              // Option MRU: 1500 (0x05DC)
+        0x02, 0x06, 0xFF, 0xFF, 0xFF, 0xFF,  // Option ACCM: 0xFFFFFFFF
+        0x03, 0x04, 0x00, 0x00,              // Option Auth-Prot: None
+        0x04, 0x04, 0x00, 0x00,              // Option Quality-Prot: None
+        0x05, 0x06, 0x12, 0x34, 0x56, 0x78,  // Option Magic-Number: fixed example
+        0x07, 0x02,                          // Option Prot-Field-Comp: enabled
+        0x08, 0x02                           // Option Addr-Control-Comp: enabled
     };
 
     // Monta frame bruto (Address, Control, Protocol, Payload)
@@ -149,11 +150,10 @@ void BSP_send_configure_request(QActive *Point) {
     // Prepara frame final com flags
     static uint8_t final_frame[MAX_FRAME_SIZE * 2 + 2];
     size_t pos = 0;
-    final_frame[pos++] = FLAG;                       // Flag inicial
+    final_frame[pos++] = FLAG;  // Flag inicial
     memcpy(&final_frame[pos], stuffed, stuffed_len);
     pos += stuffed_len;
-    final_frame[pos++] = FLAG;                       // Flag final
-
+    final_frame[pos++] = FLAG;  // Flag final
 
     MicroEvt *evt = Q_NEW(MicroEvt, ACK_RECEIVED_SIG);
     if (evt && final_frame) {
@@ -167,7 +167,7 @@ void BSP_send_configure_request(QActive *Point) {
 //=== Função para decodificar um frame PPP Configure-Request recebido ===
 void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
     // Valida flags
-    if (length < 2 || frame[0] != FLAG || frame[length-1] != FLAG) {
+    if (length < 2 || frame[0] != FLAG || frame[length - 1] != FLAG) {
         printf("Invalid frame: missing flags\n");
         return;
     }
@@ -191,58 +191,71 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
         printf("Frame too short\n");
         return;
     }
+
     // Extrai header PPP
-    uint8_t address    = raw[0];
-    uint8_t control    = raw[1];
-    uint8_t proto_h    = raw[2];
-    uint8_t proto_l    = raw[3];
-    uint8_t code       = raw[4];
+    uint8_t address = raw[0];
+    uint8_t control = raw[1];
+    uint8_t proto_h = raw[2];
+    uint8_t proto_l = raw[3];
+    uint8_t code = raw[4];
     uint8_t identifier = raw[5];
-    uint16_t len       = ((uint16_t)raw[6] << 8) | raw[7];
+    uint16_t len = ((uint16_t)raw[6] << 8) | raw[7];
 
     printf("Address=0x%02X, Control=0x%02X, Proto=0x%02X%02X\n", address, control, proto_h, proto_l);
     printf("Code=%u, ID=%u, Len=%u\n", code, identifier, len);
 
     // Valida FCS (últimos 2 bytes em little-endian)
-    uint16_t recv_fcs = (uint16_t)raw[raw_len-2] | ((uint16_t)raw[raw_len-1] << 8);
-    uint16_t calc_fcs = crc16_ccitt(raw, raw_len-2);
+    uint16_t recv_fcs = (uint16_t)raw[raw_len - 2] | ((uint16_t)raw[raw_len - 1] << 8);
+    uint16_t calc_fcs = crc16_ccitt(raw, raw_len - 2);
     if (recv_fcs != calc_fcs) {
         printf("FCS mismatch: recv=0x%04X, calc=0x%04X\n", recv_fcs, calc_fcs);
         return;
     }
 
     // Itera sobre as opções LCP
-    size_t opt_idx = 8;               // Início das opções após Code/ID/Length
-    size_t opt_end = 4 + len;         // 4 bytes de header PPP + len
-    while (opt_idx + 1 < opt_end && opt_idx + 1 < raw_len-2) {
+    size_t opt_idx = 8;        // Início das opções após Code/ID/Length
+    size_t opt_end = 4 + len;  // 4 bytes de header PPP + len
+    while (opt_idx + 1 < opt_end && opt_idx + 1 < raw_len - 2) {
         uint8_t type = raw[opt_idx];
-        uint8_t o_len = raw[opt_idx+1];
+        uint8_t o_len = raw[opt_idx + 1];
         if (o_len < 2 || opt_idx + o_len > opt_end) {
             printf("Invalid option length %u at idx %zu\n", o_len, opt_idx);
             break;
         }
         printf("Option Type=%u, Length=%u", type, o_len);
         switch (type) {
-            case 1: { // MRU
-                uint16_t mru = (raw[opt_idx+2] << 8) | raw[opt_idx+3];
+            case 1: {  // MRU
+                uint16_t mru = (raw[opt_idx + 2] << 8) | raw[opt_idx + 3];
                 printf(", MRU=%u\n", mru);
                 break;
             }
-            case 2: { // ACCM
-                printf(", ACCM=0x%02X%02X%02X%02X\n",
-                       raw[opt_idx+2], raw[opt_idx+3], raw[opt_idx+4], raw[opt_idx+5]);
+            case 2: {  // ACCM
+                uint32_t accm = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
+                printf(", ACCM=0x%08X\n", accm);
                 break;
             }
-            case 3: case 4: { // Auth-Prot ou Quality-Prot sem dados
+            case 3: {  // Auth-Prot
+                int auth_enabled = 0;
                 printf(", none\n");
                 break;
             }
-            case 5: { // Magic Number
-                printf(", Magic=0x%02X%02X%02X%02X\n",
-                       raw[opt_idx+2], raw[opt_idx+3], raw[opt_idx+4], raw[opt_idx+5]);
+            case 4: {  // Quality-Prot
+                int quality_enabled = 0;
+                printf(", none\n");
                 break;
             }
-            case 7: case 8: { // Compressões habilitadas
+            case 5: {  // Magic Number
+                uint32_t magic = (raw[opt_idx + 2] << 24) | (raw[opt_idx + 3] << 16) | (raw[opt_idx + 4] << 8) | raw[opt_idx + 5];
+                printf(", Magic=0x%08X\n", magic);
+                break;
+            }
+            case 7: {  // Prot-Field-Comp
+                int prot_field_comp_enabled = 1;
+                printf(", enabled\n");
+                break;
+            }
+            case 8: {  // Addr-Control-Comp
+                int addr_ctrl_comp_enabled = 1;
                 printf(", enabled\n");
                 break;
             }
@@ -253,8 +266,8 @@ void BSP_decode_configure_request(const uint8_t *frame, size_t length) {
         }
         opt_idx += o_len;
     }
-}
 
+}
 
 #ifdef Q_SPY
 enum {
