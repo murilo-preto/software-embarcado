@@ -1,7 +1,7 @@
 #include <stdio.h>
-
-#include "bsp.h"
+#include <string.h>
 #include "sinais.h"
+#include "bsp.h"
 
 void TElevador_display(int andar);
 #define UM_SEG (QTimeEvtCtr)(BSP_TICKS_PER_SEC)
@@ -96,6 +96,7 @@ QState S_STARTING(Point *const me, QEvt const *e) {
     QActive_subscribe((QActive *)me, OPEN_SIG);
     QActive_subscribe((QActive *)me, CLOSE_SIG);
     QActive_subscribe((QActive *)me, DATA_SIG);
+    QActive_subscribe((QActive *)me, MESSAGE_SIG);
 
     // Arm the time event for periodic signals
     QTimeEvt_armX(&me->timeEvt, UM_SEG, 0);
@@ -286,6 +287,32 @@ static QState S_OPENED(Point *const me, QEvt const *const e) {
     QState status;
 
     switch (e->sig) {
+        case DATA_SIG: {
+            printf("%c: S_ACK_REC: DATA_SIG \n", me->point_id);
+            char *data = ((MicroEvt *)e)->data;
+            print_hex_string(data);
+            char *message = BSP_extract_ppp_payload((uint8_t *)data, ((MicroEvt *)e)->size);
+            printf("%c: Message received: %s\n", me->point_id, message);
+
+            // if (strcmp(message, "ACK") == 0) {
+            //     printf("%c: Received ACK, opening\n", me->point_id);
+            //     printf("%c: S_ACK_REC -> S_OPENED\n", me->point_id);
+            //     status = Q_TRAN(S_OPENED);
+            //     break;
+            // }
+
+            status = Q_HANDLED();
+            break;
+        }
+        case MESSAGE_SIG: {
+            printf("%c: S_ACK_REC: MESSAGE_SIG \n", me->point_id);
+            char *data = ((MicroEvt *)e)->data;
+            printf("Message is: %s", data);
+
+            BSP_send_ppp_data(PointB, data);
+            status = Q_HANDLED();
+            break;
+        }
         default: {
             printf("%c: S_OPENED: Unhandled signal: %d\n", me->point_id,e->sig);
             status = Q_SUPER(&QHsm_top);
