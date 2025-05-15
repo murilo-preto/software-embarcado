@@ -57,12 +57,13 @@ void *udpServer() {
                         QACTIVE_POST(PointA, &evt->super, NULL);
                     }
 
-                    if (strncmp(buf, "data:", 5) == 0) {
+                    if (strncmp(buf, "message", 7) == 0) {
                         static char global_data[BUFLEN] = {0};
-                        strncpy(global_data, buf + 5, BUFLEN - 1);
-                        printf("DATA RECEIVED: %s\n", global_data);
+                        strncpy(global_data, buf + 7, BUFLEN - 1);
+                        printf("MESSAGE RECEIVED: %s\n", global_data);
 
-                        MicroEvt *evt = Q_NEW(MicroEvt, DATA_SIG);
+                        MicroEvt *evt = Q_NEW(MicroEvt, MESSAGE_SIG);
+                        sprintf(evt->data, "%s", global_data);
                         QACTIVE_POST(PointA, &evt->super, NULL);
                     }
                 }
