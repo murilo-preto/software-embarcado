@@ -10,6 +10,7 @@ enum SinaisElevador {
     OPEN_SIG = Q_USER_SIG,
     CLOSE_SIG,
     DATA_SIG,
+    MESSAGE_SIG,
     ACK_RECEIVED_SIG,
     TIME_TICK_SIG,
     TERMINATE_SIG,
